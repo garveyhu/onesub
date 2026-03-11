@@ -5,6 +5,7 @@ import {
   FileTextOutlined,
   FireOutlined,
   GiftOutlined,
+  ImportOutlined,
   PlusOutlined,
   SearchOutlined,
   SyncOutlined,
@@ -23,6 +24,7 @@ import {
   Table,
   Tabs,
   Tag,
+  Upload,
 } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
@@ -368,9 +370,35 @@ const AdminPage = () => {
     }
   };
 
+  const handleImportJSON = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
+      const isPrd = import.meta.env.PROD;
+      const baseUrl = isPrd
+        ? (window.location.pathname.endsWith('/') ? `${window.location.pathname}production` : `${window.location.pathname}/production`)
+        : '/development';
+      const res = await fetch(`${baseUrl}/plan/admin/import`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        message.success(`导入成功：${data.data.plans_imported} 个套餐，${data.data.coupons_imported} 个优惠码`);
+        fetchPlans();
+      } else {
+        message.error(data.message || '导入失败');
+      }
+    } catch {
+      message.error('导入失败');
+    }
+  };
+
   const planColumns: ColumnsType<PlanItem> = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: '名称', dataIndex: 'name', key: 'name' },
+    { title: '名称', dataIndex: 'name', key: 'name', width: 150 },
     { title: '服务商', dataIndex: 'provider', key: 'provider', width: 100 },
     {
       title: '价格',
@@ -485,6 +513,7 @@ const AdminPage = () => {
       title: '优惠码',
       dataIndex: 'code',
       key: 'code',
+      width: 140,
       render: (text) => <Tag color="blue">{text}</Tag>,
     },
     {
@@ -586,6 +615,16 @@ const AdminPage = () => {
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openPlanModal()}>
               新建套餐
             </Button>
+            <Upload
+              accept=".json"
+              showUploadList={false}
+              beforeUpload={(file) => {
+                handleImportJSON(file);
+                return false;
+              }}
+            >
+              <Button icon={<ImportOutlined />}>导入 JSON</Button>
+            </Upload>
             <Button icon={<SyncOutlined />} onClick={fetchPlans}>
               刷新
             </Button>

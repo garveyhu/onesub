@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+import json
+
+from fastapi import APIRouter, Depends, UploadFile, File
 from sqlalchemy.orm import Session
 
 from backend.complex.auth.oauth import get_current_user
@@ -6,6 +8,8 @@ from backend.complex.database import get_db
 from backend.complex.response.code import ResultCode
 from backend.complex.response.exception import CustomException
 from backend.complex.response.result import Result
+from backend.models.coupon import Coupon
+from backend.models.plan import Plan
 from backend.models.user import User
 from backend.modules.plan.schemas.plan_dto import (
     PlanCreateDTO,
@@ -41,6 +45,77 @@ def admin_list_plans(
     _check_admin(current_user)
     plans = PlanService.list_all(db)
     return Result.ok([PlanVO.from_orm_with_features(p) for p in plans])
+
+
+@router.post("/admin/import")
+async def admin_import_plans(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """管理员：从 JSON 文件导入套餐和优惠码（按名称 upsert）"""
+    _check_admin(current_user)
+    content = await file.read()
+    try:
+        data = json.loads(content)
+    except json.JSONDecodeError:
+        raise CustomException(ResultCode.FAIL, "JSON 格式错误")
+
+    plan_count = 0
+    coupon_count = 0
+
+    # 导入套餐
+    for p in data.get("plans", []):
+        existing = db.query(Plan).filter(Plan.name == p["name"]).first()
+        features_str = json.dumps(p.get("features", []), ensure_ascii=False)
+        if existing:
+            existing.description = p.get("description", existing.description)
+            existing.provider = p.get("provider", existing.provider)
+            existing.duration_days = p.get("duration_days", existing.duration_days)
+            existing.price = p.get("price", existing.price)
+            existing.original_price = p.get("original_price", existing.original_price)
+            existing.features = features_str
+            existing.is_active = p.get("is_active", existing.is_active)
+            existing.is_hot = p.get("is_hot", existing.is_hot)
+            existing.sort_order = p.get("sort_order", existing.sort_order)
+        else:
+            plan = Plan(
+                name=p["name"],
+                description=p.get("description"),
+                provider=p.get("provider", ""),
+                duration_days=p.get("duration_days", 30),
+                price=p["price"],
+                original_price=p.get("original_price"),
+                features=features_str,
+                is_active=p.get("is_active", True),
+                is_hot=p.get("is_hot", False),
+                sort_order=p.get("sort_order", 0),
+            )
+            db.add(plan)
+        plan_count += 1
+
+    # 导入优惠码
+    for c in data.get("coupons", []):
+        existing = db.query(Coupon).filter(Coupon.code == c["code"]).first()
+        if existing:
+            if "discount_amount" in c:
+                existing.discount_amount = c["discount_amount"]
+            if "max_uses" in c:
+                existing.max_uses = c["max_uses"]
+            if "is_active" in c:
+                existing.is_active = c["is_active"]
+        else:
+            coupon = Coupon(
+                code=c["code"],
+                discount_amount=c.get("discount_amount", 0),
+                max_uses=c.get("max_uses", 1),
+                is_active=c.get("is_active", True),
+            )
+            db.add(coupon)
+        coupon_count += 1
+
+    db.commit()
+    return Result.ok({"plans_imported": plan_count, "coupons_imported": coupon_count})
 
 
 @router.post("/create")
