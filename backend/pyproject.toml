@@ -1,0 +1,48 @@
+[project]
+name = "backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Links", email = "h96599021@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.18.4",
+    "fastapi[all]>=0.135.1",
+    "loguru>=0.7.3",
+    "passlib[bcrypt]>=1.7.4",
+    "pyjwt>=2.11.0",
+    "pymysql>=1.1.2",
+    "python-dotenv>=1.2.2",
+    "pyyaml>=6.0.3",
+    "sqlalchemy>=2.0.48",
+]
+
+[project.scripts]
+backend = "backend:main"
+
+[build-system]
+requires = ["uv_build>=0.10.8,<0.11.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.15.5",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+exclude = ["*.pyc", "migrations"]
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.ruff.lint.isort]
+section-order = ["future", "standard-library", "third-party", "first-party", "local-folder"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"

@@ -1,0 +1,5 @@
+{
+    "APP_NAME": "onesub",
+    "LOG_LEVEL": "INFO",
+    "SECRET_KEY": "onesub-secret-key-change-me-in-production"
+}
