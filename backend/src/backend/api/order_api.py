@@ -13,6 +13,55 @@ from backend.modules.order.service.order_service import OrderService
 router = APIRouter(prefix="/order", tags=["订单"])
 
 
+def _check_admin(user: User):
+    if not user.is_admin:
+        raise CustomException(ResultCode.FORBIDDEN, "仅管理员可操作")
+
+
+# ---- 管理员接口（必须放在 /{order_id} 之前，否则路由冲突） ----
+
+
+@router.get("/admin/list")
+def admin_list_orders(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """管理员：所有订单"""
+    _check_admin(current_user)
+    orders = OrderService.list_all(db)
+    return Result.ok([OrderVO.model_validate(o) for o in orders])
+
+
+@router.post("/admin/{order_id}/confirm")
+def admin_confirm_order(
+    order_id: int,
+    dto: OrderAdminUpdateDTO = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """管理员：确认收款"""
+    _check_admin(current_user)
+    remark = dto.admin_remark if dto else None
+    order = OrderService.confirm_paid(db, order_id, remark)
+    return Result.ok(OrderVO.model_validate(order))
+
+
+@router.post("/admin/{order_id}/status")
+def admin_update_status(
+    order_id: int,
+    dto: OrderAdminUpdateDTO,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """管理员：更新状态"""
+    _check_admin(current_user)
+    order = OrderService.update_status(db, order_id, dto.status, dto.admin_remark)
+    return Result.ok(OrderVO.model_validate(order))
+
+
+# ---- 用户接口 ----
+
+
 @router.post("/create")
 def create_order(
     dto: OrderCreateDTO,
@@ -53,50 +102,4 @@ def cancel_order(
 ):
     """取消订单"""
     order = OrderService.cancel(db, order_id, current_user.id)
-    return Result.ok(OrderVO.model_validate(order))
-
-
-# ---- 管理员接口 ----
-
-
-def _check_admin(user: User):
-    if not user.is_admin:
-        raise CustomException(ResultCode.FORBIDDEN, "仅管理员可操作")
-
-
-@router.get("/admin/list")
-def admin_list_orders(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """管理员：所有订单"""
-    _check_admin(current_user)
-    orders = OrderService.list_all(db)
-    return Result.ok([OrderVO.model_validate(o) for o in orders])
-
-
-@router.post("/admin/{order_id}/confirm")
-def admin_confirm_order(
-    order_id: int,
-    dto: OrderAdminUpdateDTO = None,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """管理员：确认收款"""
-    _check_admin(current_user)
-    remark = dto.admin_remark if dto else None
-    order = OrderService.confirm_paid(db, order_id, remark)
-    return Result.ok(OrderVO.model_validate(order))
-
-
-@router.post("/admin/{order_id}/status")
-def admin_update_status(
-    order_id: int,
-    dto: OrderAdminUpdateDTO,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-):
-    """管理员：更新状态"""
-    _check_admin(current_user)
-    order = OrderService.update_status(db, order_id, dto.status, dto.admin_remark)
     return Result.ok(OrderVO.model_validate(order))

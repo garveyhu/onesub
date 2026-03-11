@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import alipayQR from '@/assets/images/alipay-links.jpg';
+import wechatQR from '@/assets/images/wechat-links.jpg';
 import { AUTH_CONFIG } from '@/constants/app.constants';
 import { get, post } from '@/services';
 
@@ -144,9 +145,7 @@ const PlansPage = () => {
                 <span className="amount">{plan.price}</span>
                 <span className="duration">/{plan.durationDays}天</span>
               </div>
-              {plan.originalPrice > 0 && (
-                <div className="original-price">官方价 ¥{plan.originalPrice}</div>
-              )}
+
               <ul className="plan-feature-list">
                 {(plan.features || []).map((f, i) => (
                   <li key={i}>
@@ -233,11 +232,19 @@ const PlansPage = () => {
 
             {/* 支付宝收款码 */}
             <div className="qr-section">
-              <p className="qr-hint">请使用支付宝扫描下方收款码，转账 <strong>¥{getActualPrice()}</strong></p>
+              <div className="qr-step">第一步：使用支付宝扫码转账 <strong>¥{getActualPrice()}</strong></div>
               <div className="qr-wrapper">
                 <img src={alipayQR} alt="支付宝收款码" className="qr-image" />
               </div>
-              <p className="qr-note">转账后点击"我已支付"，管理员确认收款后即开通服务</p>
+            </div>
+
+            {/* 微信客服 */}
+            <div className="qr-section">
+              <div className="qr-step">第二步：扫码添加微信客服，发送订单号确认开通</div>
+              <div className="qr-wrapper">
+                <img src={wechatQR} alt="微信客服" className="qr-image" />
+              </div>
+              <p className="qr-note">添加微信后发送订单号，客服确认收款后 5 分钟内开通</p>
             </div>
 
             <Button

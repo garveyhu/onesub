@@ -11,36 +11,99 @@ from backend.models.coupon import Coupon
 from backend.models.plan import Plan
 
 
+PLANS = [
+    {
+        "name": "Claude Pro",
+        "description": "Anthropic Claude Opus 4.6 专业版，最强编程与推理 AI",
+        "provider": "Anthropic",
+        "duration_days": 30,
+        "price": 180,
+        "features": [
+            "Claude Opus 4.6 无限使用",
+            "200K 超长上下文窗口",
+            "128K 输出 Token",
+            "Claude Code 编程助手",
+            "文件上传与分析",
+            "自适应深度思考",
+        ],
+        "sort_order": 1,
+    },
+    {
+        "name": "ChatGPT Plus",
+        "description": "OpenAI GPT-4o 全能版，文本/图片/语音/视频多模态 AI",
+        "provider": "OpenAI",
+        "duration_days": 30,
+        "price": 180,
+        "features": [
+            "GPT-4o 无限使用",
+            "128K 上下文窗口",
+            "GPT Image 1 图片生成",
+            "高级数据分析与代码解释器",
+            "深度研究模式",
+            "自定义 GPTs",
+        ],
+        "sort_order": 2,
+    },
+    {
+        "name": "Gemini Advanced",
+        "description": "Google Gemini 3.1 Pro，百万级上下文与深度研究能力",
+        "provider": "Google",
+        "duration_days": 30,
+        "price": 180,
+        "features": [
+            "Gemini 3.1 Pro 无限使用",
+            "100 万 Token 超长上下文",
+            "深度研究与自动报告生成",
+            "Google Workspace 深度集成",
+            "自定义 AI 助手 (Gems)",
+            "2TB Google Drive 存储",
+        ],
+        "sort_order": 3,
+    },
+    {
+        "name": "Claude Max",
+        "description": "Anthropic 顶级套餐，5 倍用量上限，Agent 团队协作",
+        "provider": "Anthropic",
+        "duration_days": 30,
+        "price": 800,
+        "features": [
+            "Claude Opus 4.6 全系列模型",
+            "5 倍用量上限",
+            "Agent 团队多智能体协作",
+            "100 万 Token 上下文 (Beta)",
+            "优先队列响应",
+            "专属客服支持",
+        ],
+        "sort_order": 4,
+    },
+]
+
+
 def seed():
     db = SessionLocal()
     try:
-        # Claude Code 订阅套餐
-        existing_plan = db.query(Plan).filter(Plan.name == "Claude Pro").first()
-        if not existing_plan:
-            plan = Plan(
-                name="Claude Pro",
-                description="Claude 3.5 Sonnet 专业版订阅，解锁全部高级功能",
-                provider="Anthropic",
-                duration_days=30,
-                price=180,
-                original_price=200,
-                features=json.dumps(
-                    [
-                        "Claude 3.5 Sonnet 无限使用",
-                        "优先响应速度",
-                        "200K 超长上下文",
-                        "文件上传与分析",
-                        "Claude Code 编程助手",
-                    ],
-                    ensure_ascii=False,
-                ),
-                is_active=True,
-                sort_order=1,
-            )
-            db.add(plan)
-            print("✅ 已创建套餐: Claude Pro ¥180/月")
-        else:
-            print("⏭️  套餐 Claude Pro 已存在，跳过")
+        for plan_data in PLANS:
+            existing = db.query(Plan).filter(Plan.name == plan_data["name"]).first()
+            if not existing:
+                plan = Plan(
+                    name=plan_data["name"],
+                    description=plan_data["description"],
+                    provider=plan_data["provider"],
+                    duration_days=plan_data["duration_days"],
+                    price=plan_data["price"],
+                    features=json.dumps(plan_data["features"], ensure_ascii=False),
+                    is_active=True,
+                    sort_order=plan_data["sort_order"],
+                )
+                db.add(plan)
+                print(f"✅ 已创建套餐: {plan_data['name']} ¥{plan_data['price']}/月")
+            else:
+                # 更新现有套餐信息
+                existing.description = plan_data["description"]
+                existing.price = plan_data["price"]
+                existing.features = json.dumps(plan_data["features"], ensure_ascii=False)
+                existing.sort_order = plan_data["sort_order"]
+                print(f"🔄 已更新套餐: {plan_data['name']}")
 
         # ¥20 优惠码
         existing_coupon = db.query(Coupon).filter(Coupon.code == "WELCOME20").first()
