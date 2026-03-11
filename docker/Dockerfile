@@ -4,7 +4,7 @@ WORKDIR /app/frontend
 
 # Copy dependencies first
 COPY frontend/package.json frontend/yarn.lock ./
-RUN yarn install --frozen-lockfile --ignore-scripts
+RUN yarn install --ignore-scripts
 
 # Copy source code and build
 COPY frontend/ ./
@@ -35,7 +35,6 @@ RUN uv sync --frozen --no-install-project
 
 # Copy backend source code files
 COPY backend/alembic.ini ./
-COPY backend/main.py ./
 COPY backend/seed.py ./
 COPY backend/src/ ./src/
 COPY backend/migrations/ ./migrations/

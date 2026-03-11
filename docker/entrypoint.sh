@@ -8,7 +8,7 @@ uv run python seed.py
 
 # Start FastAPI backend in the background
 # We bind to 127.0.0.1 since Nginx will proxy to it locally
-uv run uvicorn main:app --host 127.0.0.1 --port 8000 --proxy-headers &
+uv run uvicorn backend.app.main:app --host 127.0.0.1 --port 8000 --proxy-headers &
 
 # Start Nginx in the foreground
 echo "Starting Nginx..."
