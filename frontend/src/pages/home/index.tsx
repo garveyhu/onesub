@@ -1,43 +1,45 @@
 import { RocketOutlined, SafetyOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { Spin } from 'antd';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+import { get } from '@/services';
 
 import './index.less';
 
-const plans = [
-  {
-    id: 'claude-pro',
-    name: 'Claude Pro',
-    provider: 'Anthropic',
-    price: 180,
-    duration: '月',
-    features: ['Claude Opus 4.6 解锁使用', '200K 超长上下文', 'Claude Code 编程助手', '自适应深度思考'],
-    color: '#f59e0b',
-    popular: true,
-  },
-  {
-    id: 'chatgpt-plus',
-    name: 'ChatGPT Plus',
-    provider: 'OpenAI',
-    price: 180,
-    duration: '月',
-    features: ['GPT-5.4 解锁使用', 'GPT Image 1 图片生成', '高级数据分析', '深度研究模式'],
-    color: '#10b981',
-    popular: false,
-  },
-  {
-    id: 'gemini-pro',
-    name: 'Gemini Pro',
-    provider: 'Google',
-    price: 180,
-    duration: '月',
-    features: ['Gemini 3.1 Pro 解锁使用', '百万级上下文窗口', '深度研究报告', 'Google 全家桶集成'],
-    color: '#3b82f6',
-    popular: false,
-  },
-];
+interface PlanItem {
+  id: number;
+  name: string;
+  description: string;
+  provider: string;
+  durationDays: number;
+  price: number;
+  originalPrice: number;
+  features: string[];
+  isActive: boolean;
+  isHot: boolean;
+}
+
 
 const HomePage = () => {
   const navigate = useNavigate();
+  const [hotPlans, setHotPlans] = useState<PlanItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        const res: any = await get('/plan');
+        if (res.success) {
+          const all: PlanItem[] = res.data || [];
+          setHotPlans(all.filter((p) => p.isHot));
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchPlans();
+  }, []);
 
   return (
     <div className="home-page">
@@ -50,7 +52,7 @@ const HomePage = () => {
             一键订阅<span className="gradient-text">全球顶级 AI</span>
           </h1>
           <p className="hero-desc">
-            无需海外信用卡，无需复杂操作。OneSub 为你提供 Claude Opus 4.6、GPT-5.4、Gemini 3.1 Pro
+            无需海外信用卡，无需复杂操作。OneSub 为你提供 Claude、ChatGPT、Gemini
             等热门 AI 工具的便捷代充订阅服务，支付宝扫码即充，极速开通。
           </p>
           <div className="hero-actions">
@@ -111,40 +113,55 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Pricing */}
+      {/* Pricing — Dynamic */}
       <section className="pricing-section">
         <div className="section-inner">
           <h2 className="section-title">热门套餐</h2>
           <p className="section-subtitle">主流 AI 工具全覆盖，选择适合你的方案</p>
-          <div className="pricing-grid">
-            {plans.map((plan) => (
-              <div key={plan.id} className={`pricing-card ${plan.popular ? 'popular' : ''}`}>
-                {plan.popular && <div className="popular-badge">推荐</div>}
-                <div className="plan-provider">{plan.provider}</div>
-                <h3 className="plan-name">{plan.name}</h3>
-                <div className="plan-price">
-                  <span className="price-currency">¥</span>
-                  <span className="price-amount">{plan.price}</span>
-                  <span className="price-duration">/{plan.duration}</span>
+
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: 60 }}>
+              <Spin size="large" />
+            </div>
+          ) : hotPlans.length > 0 ? (
+            <div className="pricing-grid">
+              {hotPlans.map((plan, idx) => (
+                <div key={plan.id} className={`pricing-card ${idx === 0 ? 'popular' : ''}`}>
+                  {idx === 0 && <div className="popular-badge">推荐</div>}
+                  <div className="plan-provider">{plan.provider}</div>
+                  <h3 className="plan-name">{plan.name}</h3>
+                  <div className="plan-price">
+                    <span className="price-currency">¥</span>
+                    <span className="price-amount">{plan.price}</span>
+                    <span className="price-duration">/{plan.durationDays}天</span>
+                  </div>
+                  <ul className="plan-features">
+                    {(plan.features || []).map((f, i) => (
+                      <li key={i}>
+                        <span className="check">✓</span> {f}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    className={`plan-btn ${idx === 0 ? 'primary' : ''}`}
+                    onClick={() => navigate('/plans')}
+                  >
+                    立即订阅
+                  </button>
                 </div>
-                <ul className="plan-features">
-                  {plan.features.map((f, i) => (
-                    <li key={i}>
-                      <span className="check">✓</span> {f}
-                    </li>
-                  ))}
-                </ul>
-                <button
-                  className={`plan-btn ${plan.popular ? 'primary' : ''}`}
-                  onClick={() => navigate('/plans')}
-                >
-                  立即订阅
-                </button>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+              暂无热门套餐，请
+              <a onClick={() => navigate('/plans')} style={{ color: '#0ea5e9', cursor: 'pointer' }}>
+                查看全部套餐
+              </a>
+            </div>
+          )}
+
           <div className="more-plans">
-            还有 <strong>Claude Max ¥800/月</strong> 等更多套餐方案 →{' '}
+            更多套餐方案 →{' '}
             <a onClick={() => navigate('/plans')}>查看全部</a>
           </div>
         </div>

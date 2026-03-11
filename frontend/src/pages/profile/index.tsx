@@ -1,9 +1,16 @@
-import { UserOutlined } from '@ant-design/icons';
-import { App, Avatar, Button, Card, Descriptions, Input, Modal } from 'antd';
-
+import {
+  CrownOutlined,
+  KeyOutlined,
+  LogoutOutlined,
+  ShoppingOutlined,
+  UserOutlined,
+  WechatOutlined,
+} from '@ant-design/icons';
+import { App, Avatar, Button, Input, Modal } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import wechatQR from '@/assets/images/wechat-links.jpg';
 import { AUTH_CONFIG } from '@/constants/app.constants';
 import { post } from '@/services';
 
@@ -22,6 +29,7 @@ const ProfilePage = () => {
   const { message } = App.useApp();
   const [user, setUser] = useState<UserInfo | null>(null);
   const [changePwdOpen, setChangePwdOpen] = useState(false);
+  const [wechatOpen, setWechatOpen] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -68,32 +76,79 @@ const ProfilePage = () => {
 
   return (
     <div className="profile-page">
-      <Card className="profile-card">
-        <div className="profile-header">
-          <Avatar size={72} icon={<UserOutlined />} className="profile-avatar" />
-          <div className="profile-name">
-            <h2>{user.username}</h2>
-            <span className="profile-role">{user.isAdmin ? '管理员' : '普通用户'}</span>
+      {/* Banner */}
+      <div className="profile-banner">
+        <div className="banner-pattern" />
+        <div className="banner-content">
+          <Avatar size={88} icon={<UserOutlined />} className="profile-avatar" />
+          <div className="banner-text">
+            <h1>{user.username}</h1>
+            <div className="profile-badges">
+              {user.isAdmin && (
+                <span className="badge admin-badge">
+                  <CrownOutlined /> 管理员
+                </span>
+              )}
+              <span className="badge member-badge">
+                <UserOutlined /> {user.isAdmin ? 'Admin' : '普通用户'}
+              </span>
+            </div>
           </div>
         </div>
+      </div>
 
-        <Descriptions column={1} className="profile-info" bordered>
-          <Descriptions.Item label="用户名">{user.username}</Descriptions.Item>
-          <Descriptions.Item label="邮箱">{user.email || '未设置'}</Descriptions.Item>
-          <Descriptions.Item label="注册时间">
-            {new Date(user.createdAt).toLocaleString('zh-CN')}
-          </Descriptions.Item>
-        </Descriptions>
-
-        <div className="profile-actions">
-          <Button onClick={() => navigate('/orders')}>我的订单</Button>
-          <Button onClick={() => setChangePwdOpen(true)}>修改密码</Button>
-          <Button danger onClick={handleLogout}>
-            退出登录
-          </Button>
+      {/* Info Cards */}
+      <div className="profile-info-cards">
+        <div className="info-card">
+          <div className="info-icon">
+            <UserOutlined />
+          </div>
+          <div className="info-detail">
+            <span className="info-label">用户名</span>
+            <span className="info-value">{user.username}</span>
+          </div>
         </div>
-      </Card>
+        <div className="info-card">
+          <div className="info-icon email-icon">📧</div>
+          <div className="info-detail">
+            <span className="info-label">邮箱</span>
+            <span className="info-value">{user.email || '未设置'}</span>
+          </div>
+        </div>
+        <div className="info-card">
+          <div className="info-icon time-icon">📅</div>
+          <div className="info-detail">
+            <span className="info-label">注册时间</span>
+            <span className="info-value">{new Date(user.createdAt).toLocaleString('zh-CN')}</span>
+          </div>
+        </div>
+      </div>
 
+      {/* Quick Actions */}
+      <div className="profile-actions-grid">
+        <div className="action-card" onClick={() => navigate('/orders')}>
+          <ShoppingOutlined className="action-icon orders-icon" />
+          <span className="action-label">我的订单</span>
+          <span className="action-desc">查看订单记录和状态</span>
+        </div>
+        <div className="action-card" onClick={() => setChangePwdOpen(true)}>
+          <KeyOutlined className="action-icon pwd-icon" />
+          <span className="action-label">修改密码</span>
+          <span className="action-desc">更新你的登录密码</span>
+        </div>
+        <div className="action-card" onClick={() => setWechatOpen(true)}>
+          <WechatOutlined className="action-icon wechat-icon" />
+          <span className="action-label">联系客服</span>
+          <span className="action-desc">微信扫码联系我们</span>
+        </div>
+        <div className="action-card danger" onClick={handleLogout}>
+          <LogoutOutlined className="action-icon logout-icon" />
+          <span className="action-label">退出登录</span>
+          <span className="action-desc">安全退出当前账号</span>
+        </div>
+      </div>
+
+      {/* Change Password Modal */}
       <Modal
         title="修改密码"
         open={changePwdOpen}
@@ -104,9 +159,25 @@ const ProfilePage = () => {
         <Input.Password
           placeholder="请输入新密码（至少 6 位）"
           value={newPassword}
-          onChange={e => setNewPassword(e.target.value)}
+          onChange={(e) => setNewPassword(e.target.value)}
           style={{ marginTop: 16 }}
         />
+      </Modal>
+
+      {/* WeChat QR Modal */}
+      <Modal
+        title="微信客服"
+        open={wechatOpen}
+        onCancel={() => setWechatOpen(false)}
+        footer={
+          <Button onClick={() => setWechatOpen(false)}>关闭</Button>
+        }
+        centered
+      >
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <img src={wechatQR} alt="微信客服" style={{ width: 220, borderRadius: 12 }} />
+          <p style={{ marginTop: 12, color: '#64748b' }}>扫码添加微信，咨询任何问题</p>
+        </div>
       </Modal>
     </div>
   );

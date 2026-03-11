@@ -19,6 +19,7 @@ class PlanVO(BaseModel):
     original_price: Optional[float] = None
     features: Optional[list[str]] = None
     is_active: bool
+    is_hot: bool = False
     sort_order: int
     created_at: datetime
 
@@ -35,6 +36,7 @@ class PlanVO(BaseModel):
             "original_price": plan.original_price,
             "features": json.loads(plan.features) if plan.features else [],
             "is_active": plan.is_active,
+            "is_hot": getattr(plan, "is_hot", False),
             "sort_order": plan.sort_order,
             "created_at": plan.created_at,
         }
@@ -52,6 +54,7 @@ class PlanCreateDTO(BaseModel):
     original_price: Optional[float] = Field(None, description="原价")
     features: Optional[list[str]] = Field(None, description="功能特性列表")
     is_active: bool = Field(True, description="是否上架")
+    is_hot: bool = Field(False, description="是否热门")
     sort_order: int = Field(0, description="排序")
 
 
@@ -66,4 +69,5 @@ class PlanUpdateDTO(BaseModel):
     original_price: Optional[float] = Field(None)
     features: Optional[list[str]] = Field(None)
     is_active: Optional[bool] = Field(None)
+    is_hot: Optional[bool] = Field(None)
     sort_order: Optional[int] = Field(None)

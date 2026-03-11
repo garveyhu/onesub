@@ -24,6 +24,7 @@ class OrderVO(BaseModel):
     completed_at: Optional[datetime] = None
     remark: Optional[str] = None
     admin_remark: Optional[str] = None
+    username: Optional[str] = None
     created_at: datetime
 
 

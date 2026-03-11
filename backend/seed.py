@@ -29,6 +29,7 @@ PLANS = [
             "自适应深度思考",
         ],
         "sort_order": 1,
+        "is_hot": True,
     },
     {
         "name": "ChatGPT Plus",
@@ -45,6 +46,7 @@ PLANS = [
             "自定义 GPTs",
         ],
         "sort_order": 2,
+        "is_hot": True,
     },
     {
         "name": "Gemini Pro",
@@ -95,6 +97,7 @@ def seed():
                     price=plan_data["price"],
                     features=json.dumps(plan_data["features"], ensure_ascii=False),
                     is_active=True,
+                    is_hot=plan_data.get("is_hot", False),
                     sort_order=plan_data["sort_order"],
                 )
                 db.add(plan)
@@ -105,6 +108,7 @@ def seed():
                 existing.price = plan_data["price"]
                 existing.features = json.dumps(plan_data["features"], ensure_ascii=False)
                 existing.sort_order = plan_data["sort_order"]
+                existing.is_hot = plan_data.get("is_hot", False)
                 print(f"🔄 已更新套餐: {plan_data['name']}")
 
         # ¥20 优惠码

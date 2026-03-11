@@ -17,6 +17,7 @@ class Plan(Base):
     original_price = Column(Float, nullable=True, comment="原价")
     features = Column(Text, nullable=True, comment="功能特性，JSON 数组字符串")
     is_active = Column(Boolean, default=True, comment="是否上架")
+    is_hot = Column(Boolean, default=False, comment="是否热门/首页展示")
     sort_order = Column(Integer, default=0, comment="排序序号")
 
     created_at = Column(

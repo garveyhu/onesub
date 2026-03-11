@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -8,6 +9,7 @@ from backend.complex.response.exception import CustomException
 from backend.models.coupon import Coupon
 from backend.models.order import Order
 from backend.models.plan import Plan
+from backend.models.user import User
 from backend.modules.order.schemas.order_dto import OrderCreateDTO
 
 
@@ -109,9 +111,26 @@ class OrderService:
     # ---- 管理员操作 ----
 
     @staticmethod
-    def list_all(db: Session) -> list[Order]:
-        """获取所有订单（管理员）"""
-        return db.query(Order).order_by(Order.created_at.desc()).all()
+    def list_all(
+        db: Session,
+        username_filter: Optional[str] = None,
+        status_filter: Optional[str] = None,
+    ) -> list[dict]:
+        """获取所有订单（管理员），支持按用户名和状态筛选，返回带 username 的字典列表"""
+        query = db.query(Order, User.username).join(User, Order.user_id == User.id)
+
+        if username_filter:
+            query = query.filter(User.username.contains(username_filter))
+        if status_filter:
+            query = query.filter(Order.status == status_filter)
+
+        results = query.order_by(Order.created_at.desc()).all()
+
+        output = []
+        for order, username in results:
+            order.username = username  # type: ignore
+            output.append(order)
+        return output
 
     @staticmethod
     def confirm_paid(db: Session, order_id: int, admin_remark: str = None) -> Order:
