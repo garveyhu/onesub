@@ -35,7 +35,9 @@ RUN uv sync --frozen --no-install-project
 
 # Copy backend source code files
 COPY backend/alembic.ini ./
+COPY backend/README.md ./
 COPY backend/seed.py ./
+COPY backend/config/ ./config/
 COPY backend/src/ ./src/
 COPY backend/migrations/ ./migrations/
 
