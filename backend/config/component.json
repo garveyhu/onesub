@@ -2,7 +2,7 @@
     "database": {
         "type": "sqlite",
         "sqlite": {
-            "path": "sqlite:///./data.db"
+            "path": "sqlite:///./data/data.db"
         },
         "mysql": {
             "host": "127.0.0.1",

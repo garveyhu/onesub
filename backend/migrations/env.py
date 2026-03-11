@@ -17,12 +17,17 @@ if config.config_file_name is not None:
 # add your model's MetaData object here
 # for 'autogenerate' support
 from backend.complex.database import Base
+from backend.complex.config.inventory import DatabaseSettings
+
 import backend.models.user  # noqa: F401 - ensure models registered
 import backend.models.plan  # noqa: F401
 import backend.models.order  # noqa: F401
 import backend.models.coupon  # noqa: F401
 
 target_metadata = Base.metadata
+
+# Override sqlalchemy.url with the dynamic configuration
+config.set_main_option("sqlalchemy.url", DatabaseSettings.get_url())
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
