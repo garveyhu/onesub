@@ -1,14 +1,14 @@
 import { App as AntdApp, ConfigProvider } from 'antd';
 
 import { Suspense } from 'react';
-import { RouterProvider, createBrowserRouter } from 'react-router-dom';
+import { RouterProvider, createHashRouter } from 'react-router-dom';
 
 import zhCN from 'antd/locale/zh_CN';
 
 import '@/assets/styles/index.less';
 import { init } from '@/router/init';
 
-const router = createBrowserRouter(init());
+const router = createHashRouter(init());
 
 const App = () => {
   return (

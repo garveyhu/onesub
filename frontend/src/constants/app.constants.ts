@@ -1,6 +1,11 @@
+const getProductionUrl = () => {
+  const path = window.location.pathname;
+  return path.endsWith('/') ? `${path}production` : `${path}/production`;
+};
+
 // 环境配置
 export const ENV_CONFIG = {
-  PRODUCTION_URL: '/production',
+  PRODUCTION_URL: getProductionUrl(),
   DEVELOPMENT_URL: '/development',
 } as const;
 
