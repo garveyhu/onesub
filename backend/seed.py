@@ -19,7 +19,7 @@ PLANS = [
         "duration_days": 30,
         "price": 180,
         "features": [
-            "Claude Opus 4.6 无限使用",
+            "Claude Opus 4.6 解锁使用",
             "200K 超长上下文窗口",
             "128K 输出 Token",
             "Claude Code 编程助手",
@@ -30,12 +30,12 @@ PLANS = [
     },
     {
         "name": "ChatGPT Plus",
-        "description": "OpenAI GPT-4o 全能版，文本/图片/语音/视频多模态 AI",
+        "description": "OpenAI GPT-5.4 全能版，文本/图片/语音/视频多模态 AI",
         "provider": "OpenAI",
         "duration_days": 30,
         "price": 180,
         "features": [
-            "GPT-4o 无限使用",
+            "GPT-5.4 解锁使用",
             "128K 上下文窗口",
             "GPT Image 1 图片生成",
             "高级数据分析与代码解释器",
@@ -45,13 +45,13 @@ PLANS = [
         "sort_order": 2,
     },
     {
-        "name": "Gemini Advanced",
+        "name": "Gemini Pro",
         "description": "Google Gemini 3.1 Pro，百万级上下文与深度研究能力",
         "provider": "Google",
         "duration_days": 30,
         "price": 180,
         "features": [
-            "Gemini 3.1 Pro 无限使用",
+            "Gemini 3.1 Pro 解锁使用",
             "100 万 Token 超长上下文",
             "深度研究与自动报告生成",
             "Google Workspace 深度集成",

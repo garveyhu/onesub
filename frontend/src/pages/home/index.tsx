@@ -10,7 +10,7 @@ const plans = [
     provider: 'Anthropic',
     price: 180,
     duration: '月',
-    features: ['Claude Opus 4.6 无限使用', '200K 超长上下文', 'Claude Code 编程助手', '自适应深度思考'],
+    features: ['Claude Opus 4.6 解锁使用', '200K 超长上下文', 'Claude Code 编程助手', '自适应深度思考'],
     color: '#f59e0b',
     popular: true,
   },
@@ -20,17 +20,17 @@ const plans = [
     provider: 'OpenAI',
     price: 180,
     duration: '月',
-    features: ['GPT-4o 无限使用', 'GPT Image 1 图片生成', '高级数据分析', '深度研究模式'],
+    features: ['GPT-5.4 解锁使用', 'GPT Image 1 图片生成', '高级数据分析', '深度研究模式'],
     color: '#10b981',
     popular: false,
   },
   {
-    id: 'gemini-advanced',
-    name: 'Gemini Advanced',
+    id: 'gemini-pro',
+    name: 'Gemini Pro',
     provider: 'Google',
     price: 180,
     duration: '月',
-    features: ['Gemini 3.1 Pro 无限使用', '百万级上下文窗口', '深度研究报告', 'Google 全家桶集成'],
+    features: ['Gemini 3.1 Pro 解锁使用', '百万级上下文窗口', '深度研究报告', 'Google 全家桶集成'],
     color: '#3b82f6',
     popular: false,
   },
@@ -50,7 +50,7 @@ const HomePage = () => {
             一键订阅<span className="gradient-text">全球顶级 AI</span>
           </h1>
           <p className="hero-desc">
-            无需海外信用卡，无需复杂操作。OneSub 为你提供 Claude Opus 4.6、GPT-4o、Gemini 3.1 Pro
+            无需海外信用卡，无需复杂操作。OneSub 为你提供 Claude Opus 4.6、GPT-5.4、Gemini 3.1 Pro
             等热门 AI 工具的便捷代充订阅服务，支付宝扫码即充，极速开通。
           </p>
           <div className="hero-actions">

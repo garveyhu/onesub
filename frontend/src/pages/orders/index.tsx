@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import alipayQR from '@/assets/images/alipay-links.jpg';
+import wechatQR from '@/assets/images/wechat-links.jpg';
 import { AUTH_CONFIG } from '@/constants/app.constants';
 import { get, post } from '@/services';
 
@@ -86,21 +87,42 @@ const OrdersPage = () => {
           <p style={{ fontSize: 16, fontWeight: 600, color: '#ef4444' }}>
             请转账 ¥{order.actualAmount}
           </p>
-          <div style={{
-            display: 'inline-block',
-            padding: 12,
-            background: '#fff',
-            border: '2px solid #e2e8f0',
-            borderRadius: 16,
-          }}>
-            <img
-              src={alipayQR}
-              alt="支付宝收款码"
-              style={{ width: 200, height: 200, objectFit: 'contain', borderRadius: 8 }}
-            />
+          <div style={{ display: 'flex', gap: 16, justifyContent: 'center', flexWrap: 'wrap' }}>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>支付宝扫码转账</p>
+              <div style={{
+                display: 'inline-block',
+                padding: 8,
+                background: '#fff',
+                border: '2px solid #e2e8f0',
+                borderRadius: 12,
+              }}>
+                <img
+                  src={alipayQR}
+                  alt="支付宝收款码"
+                  style={{ width: 160, height: 160, objectFit: 'contain', borderRadius: 8 }}
+                />
+              </div>
+            </div>
+            <div>
+              <p style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>微信联系客服</p>
+              <div style={{
+                display: 'inline-block',
+                padding: 8,
+                background: '#fff',
+                border: '2px solid #e2e8f0',
+                borderRadius: 12,
+              }}>
+                <img
+                  src={wechatQR}
+                  alt="微信客服"
+                  style={{ width: 160, height: 160, objectFit: 'contain', borderRadius: 8 }}
+                />
+              </div>
+            </div>
           </div>
           <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 12 }}>
-            转账后请等待管理员确认收款
+            转账后添加微信发送订单号，客服 5 分钟内确认开通
           </p>
         </div>
       ),
