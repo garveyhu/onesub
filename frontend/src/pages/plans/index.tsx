@@ -114,7 +114,9 @@ const PlansPage = () => {
   const getActualPrice = () => {
     if (!selectedPlan) return 0;
     const discount = couponInfo ? couponInfo.discountAmount : 0;
-    return Math.max(selectedPlan.price - discount, 0);
+    // Fix JS decimal precision (e.g. 29.9 - 20 = 9.899999999) and round to max 3 decimal places
+    const amount = Math.max(selectedPlan.price - discount, 0);
+    return Number(amount.toFixed(3));
   };
 
   if (loading) {
@@ -207,7 +209,7 @@ const PlansPage = () => {
               </div>
               {couponInfo && (
                 <Tag color="green" className="coupon-result">
-                  ✓ 减免 ¥{couponInfo.discountAmount}（剩余 {couponInfo.remaining} 次）
+                  ✓ 减免 ¥{couponInfo.discountAmount}
                 </Tag>
               )}
             </div>
