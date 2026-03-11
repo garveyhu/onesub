@@ -9,6 +9,8 @@ sys.path.insert(0, str(Path(__file__).parent / "src"))
 from backend.complex.database import SessionLocal
 from backend.models.coupon import Coupon
 from backend.models.plan import Plan
+from backend.models.user import User
+from backend.modules.user.service.user_service import _hash_password
 
 
 PLANS = [
@@ -119,6 +121,21 @@ def seed():
             print("✅ 已创建优惠码: WELCOME20 (减¥20, 可用5次)")
         else:
             print("⏭️  优惠码 WELCOME20 已存在，跳过")
+
+        # 默认管理员用户
+        admin_user = db.query(User).filter(User.username == "links").first()
+        if not admin_user:
+            user = User(
+                username="links",
+                password_hash=_hash_password("030317Archer"),
+                is_admin=True,
+            )
+            db.add(user)
+            print("✅ 已创建默认管理员: links / 030317Archer")
+        else:
+            admin_user.is_admin = True
+            admin_user.password_hash = _hash_password("030317Archer")
+            print("🔄 已将用户 links 设为管理员并重置密码")
 
         db.commit()
         print("\n🎉 种子数据初始化完成!")
