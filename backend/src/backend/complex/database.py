@@ -7,6 +7,13 @@ from .config.inventory import DatabaseSettings
 db_url = DatabaseSettings.get_url()
 
 if DatabaseSettings.is_sqlite():
+    import os
+    
+    # Parse the file path from sqlite:///./data/data.db -> ./data/data.db
+    if db_url.startswith("sqlite:///"):
+        db_path = db_url.replace("sqlite:///", "")
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
+        
     engine = create_engine(
         db_url,
         connect_args={"check_same_thread": False},
