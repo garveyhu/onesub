@@ -1,84 +1,74 @@
-{
-  "plans": [
-    {
-      "name": "Claude Pro",
-      "description": "Anthropic Claude Opus 4.6，200K 上下文，代码/长文/深度思考全能",
-      "provider": "Anthropic",
-      "duration_days": 30,
-      "price": 180,
-      "features": [
-        "Claude Opus 4.6 解锁使用",
-        "200K 超长上下文窗口",
-        "128K 输出 Token",
-        "Claude Code 编程助手",
-        "文件上传与分析",
-        "自适应深度思考"
-      ],
-      "sort_order": 1,
-      "is_active": true,
-      "is_hot": true
-    },
-    {
-      "name": "ChatGPT Plus",
-      "description": "OpenAI GPT-5.4 全能版，文本/图片/语音/视频多模态 AI",
-      "provider": "OpenAI",
-      "duration_days": 30,
-      "price": 180,
-      "features": [
-        "GPT-5.4 解锁使用",
-        "128K 上下文窗口",
-        "GPT Image 1 图片生成",
-        "高级数据分析与代码解释器",
-        "深度研究模式",
-        "自定义 GPTs"
-      ],
-      "sort_order": 2,
-      "is_active": true,
-      "is_hot": true
-    },
-    {
-      "name": "Gemini Pro",
-      "description": "Google Gemini 3.1 Pro，百万级上下文与深度研究能力",
-      "provider": "Google",
-      "duration_days": 30,
-      "price": 180,
-      "features": [
-        "Gemini 3.1 Pro 解锁使用",
-        "100 万 Token 超长上下文",
-        "深度研究与自动报告生成",
-        "Google Workspace 深度集成",
-        "自定义 AI 助手 (Gems)",
-        "2TB Google Drive 存储"
-      ],
-      "sort_order": 3,
-      "is_active": true,
-      "is_hot": true
-    },
-    {
-      "name": "Claude Max",
-      "description": "Anthropic 顶级套餐，5 倍用量上限，Agent 团队协作",
-      "provider": "Anthropic",
-      "duration_days": 30,
-      "price": 800,
-      "features": [
-        "Claude Opus 4.6 全系列模型",
-        "5 倍用量上限",
-        "Agent 团队多智能体协作",
-        "100 万 Token 上下文 (Beta)",
-        "优先队列响应",
-        "专属客服支持"
-      ],
-      "sort_order": 4,
-      "is_active": true,
-      "is_hot": false
-    }
-  ],
-  "coupons": [
-    {
-      "code": "WELCOME20",
-      "discount_amount": 20,
-      "max_uses": 5,
-      "is_active": true
-    }
-  ]
-}
+[
+  {
+    "name": "Claude Pro",
+    "description": "Anthropic Claude Opus 4.6，200K 上下文，代码/长文/深度思考全能",
+    "provider": "Anthropic",
+    "duration_days": 30,
+    "price": 180,
+    "features": [
+      "Claude Opus 4.6 解锁使用",
+      "200K 超长上下文窗口",
+      "128K 输出 Token",
+      "Claude Code 编程助手",
+      "文件上传与分析",
+      "自适应深度思考"
+    ],
+    "sort_order": 1,
+    "is_active": true,
+    "is_hot": true
+  },
+  {
+    "name": "ChatGPT Plus",
+    "description": "OpenAI GPT-5.4 全能版，文本/图片/语音/视频多模态 AI",
+    "provider": "OpenAI",
+    "duration_days": 30,
+    "price": 180,
+    "features": [
+      "GPT-5.4 解锁使用",
+      "128K 上下文窗口",
+      "GPT Image 1 图片生成",
+      "高级数据分析与代码解释器",
+      "深度研究模式",
+      "自定义 GPTs"
+    ],
+    "sort_order": 2,
+    "is_active": true,
+    "is_hot": true
+  },
+  {
+    "name": "Gemini Pro",
+    "description": "Google Gemini 3.1 Pro，百万级上下文与深度研究能力",
+    "provider": "Google",
+    "duration_days": 30,
+    "price": 180,
+    "features": [
+      "Gemini 3.1 Pro 解锁使用",
+      "100 万 Token 超长上下文",
+      "深度研究与自动报告生成",
+      "Google Workspace 深度集成",
+      "自定义 AI 助手 (Gems)",
+      "2TB Google Drive 存储"
+    ],
+    "sort_order": 3,
+    "is_active": true,
+    "is_hot": true
+  },
+  {
+    "name": "Claude Max",
+    "description": "Anthropic 顶级套餐，5 倍用量上限，Agent 团队协作",
+    "provider": "Anthropic",
+    "duration_days": 30,
+    "price": 800,
+    "features": [
+      "Claude Opus 4.6 全系列模型",
+      "5 倍用量上限",
+      "Agent 团队多智能体协作",
+      "100 万 Token 上下文 (Beta)",
+      "优先队列响应",
+      "专属客服支持"
+    ],
+    "sort_order": 4,
+    "is_active": true,
+    "is_hot": false
+  }
+]

@@ -386,7 +386,7 @@ const AdminPage = () => {
       });
       const data = await res.json();
       if (data.success) {
-        message.success(`导入成功：${data.data.plans_imported} 个套餐，${data.data.coupons_imported} 个优惠码`);
+        message.success(`导入成功：${data.data.imported} 个套餐`);
         fetchPlans();
       } else {
         message.error(data.message || '导入失败');
@@ -475,6 +475,32 @@ const AdminPage = () => {
       couponForm.resetFields();
     }
     setCouponModalOpen(true);
+  };
+
+  const handleImportCouponsJSON = async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
+      const isPrd = import.meta.env.PROD;
+      const baseUrl = isPrd
+        ? (window.location.pathname.endsWith('/') ? `${window.location.pathname}production` : `${window.location.pathname}/production`)
+        : '/development';
+      const res = await fetch(`${baseUrl}/coupon/admin/import`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.success) {
+        message.success(`导入成功：${data.data.imported} 个优惠码`);
+        fetchCoupons();
+      } else {
+        message.error(data.message || '导入失败');
+      }
+    } catch {
+      message.error('导入失败');
+    }
   };
 
   const handleSaveCoupon = async () => {
@@ -655,6 +681,16 @@ const AdminPage = () => {
             <Button type="primary" icon={<PlusOutlined />} onClick={() => openCouponModal()}>
               新建优惠码
             </Button>
+            <Upload
+              accept=".json"
+              showUploadList={false}
+              beforeUpload={(file) => {
+                handleImportCouponsJSON(file);
+                return false;
+              }}
+            >
+              <Button icon={<ImportOutlined />}>导入 JSON</Button>
+            </Upload>
             <Button icon={<SyncOutlined />} onClick={fetchCoupons}>
               刷新
             </Button>

@@ -53,19 +53,19 @@ async def admin_import_plans(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """管理员：从 JSON 文件导入套餐和优惠码（按名称 upsert）"""
+    """管理员：从 JSON 文件导入套餐（按名称 upsert）"""
     _check_admin(current_user)
     content = await file.read()
     try:
-        data = json.loads(content)
+        plans_data = json.loads(content)
     except json.JSONDecodeError:
         raise CustomException(ResultCode.FAIL, "JSON 格式错误")
 
-    plan_count = 0
-    coupon_count = 0
+    if not isinstance(plans_data, list):
+        raise CustomException(ResultCode.FAIL, "JSON 应为套餐数组")
 
-    # 导入套餐
-    for p in data.get("plans", []):
+    count = 0
+    for p in plans_data:
         existing = db.query(Plan).filter(Plan.name == p["name"]).first()
         features_str = json.dumps(p.get("features", []), ensure_ascii=False)
         if existing:
@@ -92,30 +92,10 @@ async def admin_import_plans(
                 sort_order=p.get("sort_order", 0),
             )
             db.add(plan)
-        plan_count += 1
-
-    # 导入优惠码
-    for c in data.get("coupons", []):
-        existing = db.query(Coupon).filter(Coupon.code == c["code"]).first()
-        if existing:
-            if "discount_amount" in c:
-                existing.discount_amount = c["discount_amount"]
-            if "max_uses" in c:
-                existing.max_uses = c["max_uses"]
-            if "is_active" in c:
-                existing.is_active = c["is_active"]
-        else:
-            coupon = Coupon(
-                code=c["code"],
-                discount_amount=c.get("discount_amount", 0),
-                max_uses=c.get("max_uses", 1),
-                is_active=c.get("is_active", True),
-            )
-            db.add(coupon)
-        coupon_count += 1
+        count += 1
 
     db.commit()
-    return Result.ok({"plans_imported": plan_count, "coupons_imported": coupon_count})
+    return Result.ok({"imported": count})
 
 
 @router.post("/create")

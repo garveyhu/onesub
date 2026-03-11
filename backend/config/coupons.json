@@ -1,0 +1,8 @@
+[
+  {
+    "code": "WELCOME20",
+    "discount_amount": 20,
+    "max_uses": 5,
+    "is_active": true
+  }
+]

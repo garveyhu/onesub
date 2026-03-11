@@ -1,6 +1,7 @@
+import json
 from typing import Optional
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, UploadFile, File
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -155,3 +156,44 @@ def admin_delete_coupon(
     db.delete(coupon)
     db.commit()
     return Result.ok()
+
+
+@router.post("/admin/import")
+async def admin_import_coupons(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """管理员：从 JSON 文件导入优惠码（按 code upsert）"""
+    _check_admin(current_user)
+    content = await file.read()
+    try:
+        coupons_data = json.loads(content)
+    except json.JSONDecodeError:
+        raise CustomException(ResultCode.FAIL, "JSON 格式错误")
+
+    if not isinstance(coupons_data, list):
+        raise CustomException(ResultCode.FAIL, "JSON 应为优惠码数组")
+
+    count = 0
+    for c in coupons_data:
+        existing = db.query(Coupon).filter(Coupon.code == c["code"]).first()
+        if existing:
+            if "discount_amount" in c:
+                existing.discount_amount = c["discount_amount"]
+            if "max_uses" in c:
+                existing.max_uses = c["max_uses"]
+            if "is_active" in c:
+                existing.is_active = c["is_active"]
+        else:
+            coupon = Coupon(
+                code=c["code"],
+                discount_amount=c.get("discount_amount", 0),
+                max_uses=c.get("max_uses", 1),
+                is_active=c.get("is_active", True),
+            )
+            db.add(coupon)
+        count += 1
+
+    db.commit()
+    return Result.ok({"imported": count})
