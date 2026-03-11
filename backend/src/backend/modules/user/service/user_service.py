@@ -1,4 +1,4 @@
-from passlib.context import CryptContext
+import bcrypt
 from sqlalchemy.orm import Session
 
 from backend.complex.response.code import ResultCode
@@ -6,7 +6,17 @@ from backend.complex.response.exception import CustomException
 from backend.models.user import User
 from backend.modules.user.schemas.user_dto import UserCreateDTO, UserUpdateDTO
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def _hash_password(password: str) -> str:
+    """哈希密码，自动截断到 72 字节（bcrypt 限制）"""
+    pwd_bytes = password.encode("utf-8")[:72]
+    return bcrypt.hashpw(pwd_bytes, bcrypt.gensalt()).decode("utf-8")
+
+
+def _verify_password(plain_password: str, hashed_password: str) -> bool:
+    """验证密码"""
+    pwd_bytes = plain_password.encode("utf-8")[:72]
+    return bcrypt.checkpw(pwd_bytes, hashed_password.encode("utf-8"))
 
 
 class UserService:
@@ -33,7 +43,7 @@ class UserService:
 
         user = User(
             username=dto.username,
-            password_hash=pwd_context.hash(dto.password),
+            password_hash=_hash_password(dto.password),
             email=dto.email,
         )
         db.add(user)
@@ -47,7 +57,7 @@ class UserService:
         if dto.username is not None:
             user.username = dto.username
         if dto.password is not None:
-            user.password_hash = pwd_context.hash(dto.password)
+            user.password_hash = _hash_password(dto.password)
         if dto.email is not None:
             user.email = dto.email
         if dto.is_active is not None:
@@ -64,4 +74,4 @@ class UserService:
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        return pwd_context.verify(plain_password, hashed_password)
+        return _verify_password(plain_password, hashed_password)

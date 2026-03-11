@@ -14,6 +14,15 @@ const MainLayout = () => {
     return !!localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
   }, [location.pathname]);
 
+  const isAdmin = useMemo(() => {
+    try {
+      const info = localStorage.getItem('user_info');
+      return info ? JSON.parse(info).isAdmin : false;
+    } catch {
+      return false;
+    }
+  }, [location.pathname]);
+
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
@@ -37,6 +46,7 @@ const MainLayout = () => {
             <a onClick={() => navigate('/')}>首页</a>
             <a onClick={() => navigate('/plans')}>套餐</a>
             {isLoggedIn && <a onClick={() => navigate('/orders')}>我的订单</a>}
+            {isAdmin && <a onClick={() => navigate('/admin')}>管理后台</a>}
           </nav>
           <div className="header-actions">
             {isLoggedIn ? (

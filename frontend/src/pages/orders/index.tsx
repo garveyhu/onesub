@@ -1,10 +1,9 @@
 import { App, Button, Empty, Spin, Table, Tag } from 'antd';
-
+import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import type { ColumnsType } from 'antd/es/table';
-
+import alipayQR from '@/assets/images/alipay-links.jpg';
 import { AUTH_CONFIG } from '@/constants/app.constants';
 import { get, post } from '@/services';
 
@@ -15,13 +14,17 @@ interface OrderItem {
   orderNo: string;
   planName: string;
   amount: number;
+  couponCode: string | null;
+  discountAmount: number;
+  actualAmount: number;
   status: string;
   createdAt: string;
+  adminRemark: string | null;
 }
 
 const statusMap: Record<string, { color: string; label: string }> = {
-  pending: { color: 'orange', label: '待支付' },
-  paid: { color: 'blue', label: '已支付' },
+  pending: { color: 'orange', label: '待确认' },
+  paid: { color: 'blue', label: '已确认收款' },
   processing: { color: 'purple', label: '开通中' },
   completed: { color: 'green', label: '已完成' },
   cancelled: { color: 'default', label: '已取消' },
@@ -40,6 +43,7 @@ const OrdersPage = () => {
       return;
     }
     fetchOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const fetchOrders = async () => {
@@ -56,7 +60,7 @@ const OrdersPage = () => {
   const handleCancel = (order: OrderItem) => {
     modal.confirm({
       title: '确认取消',
-      content: `确定要取消订单 ${order.orderNo} 吗？`,
+      content: `确定要取消订单 ${order.orderNo} 吗？取消后优惠码将退还。`,
       onOk: async () => {
         try {
           const res: any = await post(`/order/${order.id}/cancel`);
@@ -71,12 +75,45 @@ const OrdersPage = () => {
     });
   };
 
+  const showPayQR = (order: OrderItem) => {
+    modal.info({
+      title: '扫码支付',
+      icon: null,
+      width: 400,
+      centered: true,
+      content: (
+        <div style={{ textAlign: 'center', padding: '16px 0' }}>
+          <p style={{ fontSize: 16, fontWeight: 600, color: '#ef4444' }}>
+            请转账 ¥{order.actualAmount}
+          </p>
+          <div style={{
+            display: 'inline-block',
+            padding: 12,
+            background: '#fff',
+            border: '2px solid #e2e8f0',
+            borderRadius: 16,
+          }}>
+            <img
+              src={alipayQR}
+              alt="支付宝收款码"
+              style={{ width: 200, height: 200, objectFit: 'contain', borderRadius: 8 }}
+            />
+          </div>
+          <p style={{ fontSize: 13, color: '#94a3b8', marginTop: 12 }}>
+            转账后请等待管理员确认收款
+          </p>
+        </div>
+      ),
+      okText: '已知晓',
+    });
+  };
+
   const columns: ColumnsType<OrderItem> = [
     {
       title: '订单号',
       dataIndex: 'orderNo',
       key: 'orderNo',
-      render: text => <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{text}</span>,
+      render: (text) => <span style={{ fontFamily: 'monospace', fontSize: 13 }}>{text}</span>,
     },
     {
       title: '套餐',
@@ -85,9 +122,17 @@ const OrdersPage = () => {
     },
     {
       title: '金额',
-      dataIndex: 'amount',
       key: 'amount',
-      render: amount => <span style={{ fontWeight: 600 }}>¥{amount}</span>,
+      render: (_, record) => (
+        <div>
+          <span style={{ fontWeight: 600 }}>¥{record.actualAmount}</span>
+          {record.discountAmount > 0 && (
+            <Tag color="green" style={{ marginLeft: 6, fontSize: 11 }}>
+              优惠 ¥{record.discountAmount}
+            </Tag>
+          )}
+        </div>
+      ),
     },
     {
       title: '状态',
@@ -102,19 +147,27 @@ const OrdersPage = () => {
       title: '下单时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: text => new Date(text).toLocaleString('zh-CN'),
+      render: (text) => new Date(text).toLocaleString('zh-CN'),
     },
     {
       title: '操作',
       key: 'action',
       render: (_, record) => (
-        <>
+        <div style={{ display: 'flex', gap: 4 }}>
           {record.status === 'pending' && (
-            <Button type="link" danger size="small" onClick={() => handleCancel(record)}>
-              取消订单
-            </Button>
+            <>
+              <Button type="link" size="small" onClick={() => showPayQR(record)}>
+                查看收款码
+              </Button>
+              <Button type="link" danger size="small" onClick={() => handleCancel(record)}>
+                取消
+              </Button>
+            </>
           )}
-        </>
+          {record.adminRemark && (
+            <span style={{ fontSize: 12, color: '#94a3b8' }}>备注: {record.adminRemark}</span>
+          )}
+        </div>
       ),
     },
   ];

@@ -20,6 +20,7 @@ from backend.complex.database import Base
 import backend.models.user  # noqa: F401 - ensure models registered
 import backend.models.plan  # noqa: F401
 import backend.models.order  # noqa: F401
+import backend.models.coupon  # noqa: F401
 
 target_metadata = Base.metadata
 

@@ -32,6 +32,11 @@ const routes: RouteConfig[] = [
         component: lazy(() => import('@/pages/profile')),
         meta: { title: '个人中心 - OneSub', auth: true },
       },
+      {
+        path: '/admin',
+        component: lazy(() => import('@/pages/admin')),
+        meta: { title: '管理后台 - OneSub', auth: true },
+      },
     ],
   },
   {

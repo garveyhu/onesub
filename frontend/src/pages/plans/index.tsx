@@ -1,8 +1,9 @@
-import { App, Button, Spin } from 'antd';
-
+import { CheckCircleOutlined, TagOutlined } from '@ant-design/icons';
+import { App, Button, Input, Modal, Spin, Tag } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+import alipayQR from '@/assets/images/alipay-links.jpg';
 import { AUTH_CONFIG } from '@/constants/app.constants';
 import { get, post } from '@/services';
 
@@ -20,12 +21,25 @@ interface PlanItem {
   isActive: boolean;
 }
 
+interface CouponInfo {
+  code: string;
+  discountAmount: number;
+  remaining: number;
+}
+
 const PlansPage = () => {
   const navigate = useNavigate();
   const { message } = App.useApp();
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState<number | null>(null);
+
+  // 优惠码 & 支付弹窗
+  const [payModalOpen, setPayModalOpen] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<PlanItem | null>(null);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponInfo, setCouponInfo] = useState<CouponInfo | null>(null);
+  const [couponChecking, setCouponChecking] = useState(false);
 
   useEffect(() => {
     fetchPlans();
@@ -42,19 +56,49 @@ const PlansPage = () => {
     }
   };
 
-  const handleOrder = async (plan: PlanItem) => {
+  const handleCheckCoupon = async () => {
+    if (!couponCode.trim()) return;
+    setCouponChecking(true);
+    try {
+      const res: any = await post('/coupon/check', { code: couponCode.trim() });
+      if (res.success) {
+        setCouponInfo(res.data);
+        message.success(`优惠码有效！减免 ¥${res.data.discountAmount}`);
+      } else {
+        setCouponInfo(null);
+        message.error(res.message || '优惠码无效');
+      }
+    } catch {
+      setCouponInfo(null);
+    } finally {
+      setCouponChecking(false);
+    }
+  };
+
+  const openPayModal = (plan: PlanItem) => {
     const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
     if (!token) {
       message.info('请先登录');
       navigate('/login');
       return;
     }
+    setSelectedPlan(plan);
+    setCouponCode('');
+    setCouponInfo(null);
+    setPayModalOpen(true);
+  };
 
-    setOrdering(plan.id);
+  const handleSubmitOrder = async () => {
+    if (!selectedPlan) return;
+    setOrdering(selectedPlan.id);
     try {
-      const res: any = await post('/order/create', { planId: plan.id });
+      const res: any = await post('/order/create', {
+        planId: selectedPlan.id,
+        couponCode: couponInfo ? couponInfo.code : undefined,
+      });
       if (res.success) {
         message.success(`订单创建成功！订单号: ${res.data.orderNo}`);
+        setPayModalOpen(false);
         navigate('/orders');
       } else {
         message.error(res.message || '下单失败');
@@ -64,6 +108,12 @@ const PlansPage = () => {
     } finally {
       setOrdering(null);
     }
+  };
+
+  const getActualPrice = () => {
+    if (!selectedPlan) return 0;
+    const discount = couponInfo ? couponInfo.discountAmount : 0;
+    return Math.max(selectedPlan.price - discount, 0);
   };
 
   if (loading) {
@@ -84,8 +134,8 @@ const PlansPage = () => {
       <div className="plans-grid">
         {plans.length > 0 ? (
           plans.map((plan, idx) => (
-            <div key={plan.id} className={`plan-card ${idx === 1 ? 'featured' : ''}`}>
-              {idx === 1 && <div className="featured-tag">最受欢迎</div>}
+            <div key={plan.id} className={`plan-card ${idx === 0 ? 'featured' : ''}`}>
+              {idx === 0 && <div className="featured-tag">推荐</div>}
               <div className="plan-provider-tag">{plan.provider}</div>
               <h2>{plan.name}</h2>
               {plan.description && <p className="plan-desc">{plan.description}</p>}
@@ -99,16 +149,18 @@ const PlansPage = () => {
               )}
               <ul className="plan-feature-list">
                 {(plan.features || []).map((f, i) => (
-                  <li key={i}>✓ {f}</li>
+                  <li key={i}>
+                    <CheckCircleOutlined style={{ color: '#10b981', marginRight: 6 }} />
+                    {f}
+                  </li>
                 ))}
               </ul>
               <Button
-                type={idx === 1 ? 'primary' : 'default'}
+                type={idx === 0 ? 'primary' : 'default'}
                 size="large"
                 block
-                loading={ordering === plan.id}
-                onClick={() => handleOrder(plan)}
-                className={idx === 1 ? 'order-btn featured' : 'order-btn'}
+                onClick={() => openPayModal(plan)}
+                className={idx === 0 ? 'order-btn featured' : 'order-btn'}
               >
                 立即订阅
               </Button>
@@ -120,6 +172,87 @@ const PlansPage = () => {
           </div>
         )}
       </div>
+
+      {/* 支付弹窗 */}
+      <Modal
+        title="确认订单"
+        open={payModalOpen}
+        onCancel={() => setPayModalOpen(false)}
+        footer={null}
+        width={480}
+        centered
+        className="pay-modal"
+      >
+        {selectedPlan && (
+          <div className="pay-modal-content">
+            <div className="pay-plan-info">
+              <h3>{selectedPlan.name}</h3>
+              <span className="pay-provider">{selectedPlan.provider}</span>
+            </div>
+
+            {/* 优惠码 */}
+            <div className="coupon-section">
+              <label>
+                <TagOutlined /> 优惠码
+              </label>
+              <div className="coupon-input-row">
+                <Input
+                  placeholder="输入优惠码（可选）"
+                  value={couponCode}
+                  onChange={(e) => setCouponCode(e.target.value)}
+                  onPressEnter={handleCheckCoupon}
+                />
+                <Button onClick={handleCheckCoupon} loading={couponChecking}>
+                  验证
+                </Button>
+              </div>
+              {couponInfo && (
+                <Tag color="green" className="coupon-result">
+                  ✓ 减免 ¥{couponInfo.discountAmount}（剩余 {couponInfo.remaining} 次）
+                </Tag>
+              )}
+            </div>
+
+            {/* 价格明细 */}
+            <div className="price-detail">
+              <div className="price-row">
+                <span>套餐原价</span>
+                <span>¥{selectedPlan.price}</span>
+              </div>
+              {couponInfo && (
+                <div className="price-row discount">
+                  <span>优惠减免</span>
+                  <span>-¥{couponInfo.discountAmount}</span>
+                </div>
+              )}
+              <div className="price-row total">
+                <span>实付金额</span>
+                <span className="total-price">¥{getActualPrice()}</span>
+              </div>
+            </div>
+
+            {/* 支付宝收款码 */}
+            <div className="qr-section">
+              <p className="qr-hint">请使用支付宝扫描下方收款码，转账 <strong>¥{getActualPrice()}</strong></p>
+              <div className="qr-wrapper">
+                <img src={alipayQR} alt="支付宝收款码" className="qr-image" />
+              </div>
+              <p className="qr-note">转账后点击"我已支付"，管理员确认收款后即开通服务</p>
+            </div>
+
+            <Button
+              type="primary"
+              size="large"
+              block
+              loading={ordering === selectedPlan.id}
+              onClick={handleSubmitOrder}
+              className="pay-submit-btn"
+            >
+              我已支付，提交订单
+            </Button>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

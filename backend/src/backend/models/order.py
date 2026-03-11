@@ -13,7 +13,10 @@ class Order(Base):
     user_id = Column(Integer, index=True, nullable=False, comment="关联 users 表 ID")
     plan_id = Column(Integer, index=True, nullable=False, comment="关联 plans 表 ID")
     plan_name = Column(String(100), nullable=True, comment="套餐名称快照")
-    amount = Column(Float, nullable=False, comment="订单金额")
+    amount = Column(Float, nullable=False, comment="原始金额")
+    coupon_code = Column(String(50), nullable=True, comment="使用的优惠码")
+    discount_amount = Column(Float, nullable=False, default=0, comment="优惠减免金额")
+    actual_amount = Column(Float, nullable=False, comment="实付金额")
     status = Column(
         String(20),
         nullable=False,
@@ -21,10 +24,11 @@ class Order(Base):
         index=True,
         comment="订单状态: pending/paid/processing/completed/cancelled",
     )
-    payment_method = Column(String(20), nullable=True, comment="支付方式: alipay")
+    payment_method = Column(String(20), nullable=True, default="alipay", comment="支付方式")
     paid_at = Column(DateTime(timezone=True), nullable=True, comment="支付时间")
     completed_at = Column(DateTime(timezone=True), nullable=True, comment="完成时间")
     remark = Column(Text, nullable=True, comment="备注")
+    admin_remark = Column(Text, nullable=True, comment="管理员备注")
 
     created_at = Column(
         DateTime(timezone=True),

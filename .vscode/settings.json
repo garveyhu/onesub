@@ -1,0 +1,9 @@
+{
+  "python.analysis.extraPaths": [
+    "/Users/links/Coding/Archer/OneSub/backend/src"
+  ],
+  "[python]": {
+    "editor.defaultFormatter": "charliermarsh.ruff",
+    "editor.formatOnSave": true
+  }
+}
