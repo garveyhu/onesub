@@ -63,6 +63,7 @@ PLANS = [
             "2TB Google Drive 存储",
         ],
         "sort_order": 3,
+        "is_hot": True,
     },
     {
         "name": "Claude Max",

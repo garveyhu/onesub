@@ -174,8 +174,8 @@ const ProfilePage = () => {
         }
         centered
       >
-        <div style={{ textAlign: 'center', padding: '16px 0' }}>
-          <img src={wechatQR} alt="微信客服" style={{ width: 220, borderRadius: 12 }} />
+        <div style={{ textAlign: 'center', padding: '16px 0', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <img src={wechatQR} alt="微信客服" style={{ width: 220, borderRadius: 12, display: 'block' }} />
           <p style={{ marginTop: 12, color: '#64748b' }}>扫码添加微信，咨询任何问题</p>
         </div>
       </Modal>

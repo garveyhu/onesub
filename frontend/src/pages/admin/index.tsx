@@ -1,7 +1,10 @@
 import {
+  AppstoreOutlined,
   DeleteOutlined,
   EditOutlined,
+  FileTextOutlined,
   FireOutlined,
+  GiftOutlined,
   PlusOutlined,
   SearchOutlined,
   SyncOutlined,
@@ -529,7 +532,7 @@ const AdminPage = () => {
   const tabItems = [
     {
       key: 'orders',
-      label: '📋 订单管理',
+      label: <span><FileTextOutlined /> 订单管理</span>,
       children: (
         <div>
           <div className="admin-filter-bar">
@@ -576,7 +579,7 @@ const AdminPage = () => {
     },
     {
       key: 'plans',
-      label: '📦 套餐管理',
+      label: <span><AppstoreOutlined /> 套餐管理</span>,
       children: (
         <div>
           <div className="admin-filter-bar">
@@ -606,7 +609,7 @@ const AdminPage = () => {
     },
     {
       key: 'coupons',
-      label: '🎫 优惠码管理',
+      label: <span><GiftOutlined /> 优惠码管理</span>,
       children: (
         <div>
           <div className="admin-filter-bar">

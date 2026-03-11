@@ -84,9 +84,17 @@
     cursor: pointer;
     transition: color 0.2s;
     text-decoration: none;
+    padding: 4px 0;
+    border-bottom: 2px solid transparent;
 
     &:hover {
       color: #0ea5e9;
+    }
+
+    &.active {
+      color: #0ea5e9;
+      font-weight: 600;
+      border-bottom-color: #0ea5e9;
     }
   }
 }

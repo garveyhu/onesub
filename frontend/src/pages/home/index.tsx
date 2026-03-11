@@ -47,7 +47,7 @@ const HomePage = () => {
       <section className="hero">
         <div className="hero-bg" />
         <div className="hero-content">
-          <div className="hero-badge">🚀 全网低价 AI 订阅代充</div>
+          <div className="hero-badge"><ThunderboltOutlined /> 全网低价 AI 订阅代充</div>
           <h1>
             一键订阅<span className="gradient-text">全球顶级 AI</span>
           </h1>

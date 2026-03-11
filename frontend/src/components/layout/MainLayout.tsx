@@ -76,10 +76,10 @@ const MainLayout = () => {
             <span className="logo-text">OneSub</span>
           </div>
           <nav className="nav-links">
-            <a onClick={() => navigate('/')}>首页</a>
-            <a onClick={() => navigate('/plans')}>套餐</a>
-            {isLoggedIn && <a onClick={() => navigate('/orders')}>我的订单</a>}
-            {isAdmin && <a onClick={() => navigate('/admin')}>管理后台</a>}
+            <a className={location.pathname === '/' ? 'active' : ''} onClick={() => navigate('/')}>首页</a>
+            <a className={location.pathname === '/plans' ? 'active' : ''} onClick={() => navigate('/plans')}>套餐</a>
+            {isLoggedIn && <a className={location.pathname === '/orders' ? 'active' : ''} onClick={() => navigate('/orders')}>我的订单</a>}
+            {isAdmin && <a className={location.pathname === '/admin' ? 'active' : ''} onClick={() => navigate('/admin')}>管理后台</a>}
           </nav>
           <div className="header-actions">
             {isLoggedIn ? (
