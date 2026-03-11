@@ -18,6 +18,8 @@ if config.config_file_name is not None:
 # for 'autogenerate' support
 from backend.complex.database import Base
 import backend.models.user  # noqa: F401 - ensure models registered
+import backend.models.plan  # noqa: F401
+import backend.models.order  # noqa: F401
 
 target_metadata = Base.metadata
 

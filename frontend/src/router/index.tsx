@@ -6,25 +6,38 @@ const routes: RouteConfig[] = [
   {
     path: '/',
     component: lazy(() => import('@/components/layout/MainLayout')),
-    meta: { auth: true },
     children: [
       {
         index: true,
         redirect: '/home',
         component: lazy(() => import('@/pages/home')),
       },
-      // 在此添加更多页面路由
-      // {
-      //   path: '/example',
-      //   component: lazy(() => import('@/pages/example')),
-      //   meta: { title: '示例页面' },
-      // },
+      {
+        path: '/home',
+        component: lazy(() => import('@/pages/home')),
+        meta: { title: '首页 - OneSub' },
+      },
+      {
+        path: '/plans',
+        component: lazy(() => import('@/pages/plans')),
+        meta: { title: '套餐 - OneSub' },
+      },
+      {
+        path: '/orders',
+        component: lazy(() => import('@/pages/orders')),
+        meta: { title: '我的订单 - OneSub', auth: true },
+      },
+      {
+        path: '/profile',
+        component: lazy(() => import('@/pages/profile')),
+        meta: { title: '个人中心 - OneSub', auth: true },
+      },
     ],
   },
   {
     path: '/login',
     component: lazy(() => import('@/pages/login')),
-    meta: { auth: false, forbidRepeatLogin: true },
+    meta: { auth: false, forbidRepeatLogin: true, title: '登录 - OneSub' },
   },
   {
     path: '*',

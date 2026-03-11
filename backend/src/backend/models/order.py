@@ -1,0 +1,37 @@
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import Column, DateTime, Float, Integer, String, Text, text
+
+from backend.complex.database import Base
+
+
+class Order(Base):
+    __tablename__ = "orders"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    order_no = Column(String(64), nullable=False, unique=True, index=True, comment="订单号")
+    user_id = Column(Integer, index=True, nullable=False, comment="关联 users 表 ID")
+    plan_id = Column(Integer, index=True, nullable=False, comment="关联 plans 表 ID")
+    plan_name = Column(String(100), nullable=True, comment="套餐名称快照")
+    amount = Column(Float, nullable=False, comment="订单金额")
+    status = Column(
+        String(20),
+        nullable=False,
+        default="pending",
+        index=True,
+        comment="订单状态: pending/paid/processing/completed/cancelled",
+    )
+    payment_method = Column(String(20), nullable=True, comment="支付方式: alipay")
+    paid_at = Column(DateTime(timezone=True), nullable=True, comment="支付时间")
+    completed_at = Column(DateTime(timezone=True), nullable=True, comment="完成时间")
+    remark = Column(Text, nullable=True, comment="备注")
+
+    created_at = Column(
+        DateTime(timezone=True),
+        server_default=text("(datetime('now', '+08:00'))"),
+    )
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=text("(datetime('now', '+08:00'))"),
+        onupdate=lambda: datetime.now(tz=timezone(timedelta(hours=8))),
+    )

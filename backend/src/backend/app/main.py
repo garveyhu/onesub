@@ -1,4 +1,5 @@
 import sys
+from contextlib import asynccontextmanager
 
 from alembic.command import upgrade
 from alembic.config import Config
@@ -25,8 +26,25 @@ logger.add(
 )
 
 
+def run_migrations():
+    try:
+        cfg = Config("alembic.ini")
+        upgrade(cfg, "head")
+        logger.info("Migrations completed.")
+    except Exception as e:
+        logger.error(f"Migration failed: {e}")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    run_migrations()
+    logger.info("Application started.")
+    yield
+    logger.info("Application shutting down.")
+
+
 def create_app() -> FastAPI:
-    app = FastAPI(title=AppSettings.APP_NAME)
+    app = FastAPI(title=AppSettings.APP_NAME, lifespan=lifespan)
 
     # CORS
     app.add_middleware(
@@ -84,22 +102,7 @@ def _register_routers(app: FastAPI):
             logger.error(f"Failed to register router {name}: {e}")
 
 
-def run_migrations():
-    try:
-        cfg = Config("alembic.ini")
-        upgrade(cfg, "head")
-        logger.info("Migrations completed.")
-    except Exception as e:
-        logger.error(f"Migration failed: {e}")
-
-
 app = create_app()
-
-
-@app.on_event("startup")
-def on_startup():
-    run_migrations()
-    logger.info("Application started.")
 
 
 @app.middleware("http")
@@ -136,3 +139,4 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("backend.app.main:app", host="0.0.0.0", port=8000, reload=True)
+

@@ -4,6 +4,7 @@ class AuthWhitelist:
     _WHITELIST = [
         "/auth/login",
         "/auth/register",
+        "/plan",
         "/health",
         "/ping",
         "/docs",
