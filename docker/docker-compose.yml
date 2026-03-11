@@ -1,20 +1,12 @@
 version: '3.8'
 
 services:
-  frontend:
+  onesub:
     build:
       context: ..
-      dockerfile: docker/frontend.Dockerfile
+      dockerfile: docker/Dockerfile
     ports:
       - "80:80"
-    depends_on:
-      - backend
-    restart: always
-
-  backend:
-    build:
-      context: ..
-      dockerfile: docker/backend.Dockerfile
     volumes:
       - data-volume:/app/backend/data
     restart: always

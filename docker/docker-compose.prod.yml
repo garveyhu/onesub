@@ -1,0 +1,8 @@
+services:
+  onesub:
+    image: 192.168.1.91:9528/complex/onehub:1.0.0
+    ports:
+      - "5373:80"
+    volumes:
+      - ./data:/app/backend/data
+    restart: always
