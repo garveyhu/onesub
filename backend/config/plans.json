@@ -1,17 +1,18 @@
 [
   {
     "name": "Claude Pro",
-    "description": "Anthropic Claude Opus 4.6，200K 上下文，代码/长文/深度思考全能",
+    "description": "Anthropic Claude Opus 4.6，200K 上下文，Projects 知识库 + 代码助手全能",
     "provider": "Anthropic",
     "duration_days": 30,
     "price": 180,
     "features": [
-      "Claude Opus 4.6 解锁使用",
-      "200K 超长上下文窗口",
-      "128K 输出 Token",
+      "Claude Opus 4.6 全系解锁",
+      "200K 超长上下文窗口（1M Beta 可用）",
+      "Projects 知识库与文档 RAG 管理",
       "Claude Code 编程助手",
-      "文件上传与分析",
-      "自适应深度思考"
+      "网页搜索与文件上传分析",
+      "Memory 跨对话持久记忆",
+      "新功能抢先体验"
     ],
     "sort_order": 1,
     "is_active": true,
@@ -24,19 +25,20 @@
     "duration_days": 30,
     "price": 180,
     "features": [
-      "GPT-5.4 解锁使用",
-      "128K 上下文窗口",
-      "GPT Image 1 图片生成",
-      "高级数据分析与代码解释器",
-      "深度研究模式",
-      "自定义 GPTs"
+      "GPT-5.4 Thinking 推理模型解锁",
+      "32K 标准上下文 / 256K 深度思考模式",
+      "DALL-E 图片生成",
+      "Sora 视频生成（限量）",
+      "深度研究与网页搜索",
+      "高级语音模式",
+      "自定义 GPTs 商店"
     ],
     "sort_order": 2,
     "is_active": true,
     "is_hot": true
   },
   {
-    "name": "Gemini Pro",
+    "name": "Google AI Pro",
     "description": "Google Gemini 3.1 Pro，百万级上下文与深度研究能力",
     "provider": "Google",
     "duration_days": 30,
@@ -44,30 +46,85 @@
     "features": [
       "Gemini 3.1 Pro 解锁使用",
       "100 万 Token 超长上下文",
-      "深度研究与自动报告生成",
-      "Google Workspace 深度集成",
-      "自定义 AI 助手 (Gems)",
-      "2TB Google Drive 存储"
+      "每日 20 次深度研究报告",
+      "Gmail / Docs / Sheets / Slides AI 集成",
+      "自定义 AI 助手（Gems）",
+      "2TB Google One 云存储"
     ],
     "sort_order": 3,
     "is_active": true,
     "is_hot": true
   },
   {
-    "name": "Claude Max",
-    "description": "Anthropic 顶级套餐，5 倍用量上限，Agent 团队协作",
+    "name": "Claude Max 5×",
+    "description": "Anthropic 高阶套餐，5 倍用量上限，重度用户与专业开发者首选",
     "provider": "Anthropic",
     "duration_days": 30,
     "price": 800,
     "features": [
       "Claude Opus 4.6 全系列模型",
-      "5 倍用量上限",
-      "Agent 团队多智能体协作",
-      "100 万 Token 上下文 (Beta)",
+      "5× 用量上限（约 225 条/5 小时）",
+      "200K 上下文（1M Token Beta 可用）",
+      "Claude Code 高频编程助手",
       "优先队列响应",
-      "专属客服支持"
+      "新功能首批体验"
     ],
     "sort_order": 4,
+    "is_active": true,
+    "is_hot": false
+  },
+  {
+    "name": "Claude Max 20×",
+    "description": "Anthropic 旗舰套餐，20 倍用量上限，高强度 Agent 与团队协作场景",
+    "provider": "Anthropic",
+    "duration_days": 30,
+    "price": 1600,
+    "features": [
+      "Claude Opus 4.6 全系列模型",
+      "20× 用量上限（约 900 条/5 小时）",
+      "200K 上下文（1M Token Beta 可用）",
+      "Claude Code 超高频编程助手",
+      "优先队列响应",
+      "新功能首批体验"
+    ],
+    "sort_order": 5,
+    "is_active": true,
+    "is_hot": false
+  },
+  {
+    "name": "OpenClaw 安装服务",
+    "description": "OpenClaw 个人 AI 助手框架安装配置，接入飞书/Telegram 等多平台",
+    "provider": "OpenClaw",
+    "duration_days": 0,
+    "price": 39.9,
+    "features": [
+      "全平台支持（macOS / Linux / Windows）",
+      "接入飞书、Telegram、WhatsApp、Discord 等",
+      "绑定 Claude / GPT / Gemini 等主流国内外模型",
+      "网页浏览与数据抓取能力",
+      "本地运行，数据完全私有",
+      "持久记忆，跨对话记住偏好",
+      "一对一远程安装 + 基础配置指导"
+    ],
+    "sort_order": 6,
+    "is_active": true,
+    "is_hot": false
+  },
+  {
+    "name": "OpenClaw 卸载服务",
+    "description": "OpenClaw 及相关组件彻底卸载清理，环境还原干净无残留",
+    "provider": "OpenClaw",
+    "duration_days": 0,
+    "price": 29.9,
+    "features": [
+      "OpenClaw 主程序完整卸载",
+      "Node.js 运行环境可选清理",
+      "相关配置文件与缓存彻底删除",
+      "Claude Code CLI 可选同步卸载",
+      "环境变量与权限恢复",
+      "一对一远程操作，全程无忧"
+    ],
+    "sort_order": 7,
     "is_active": true,
     "is_hot": false
   }

@@ -1,5 +1,6 @@
 import { RocketOutlined, SafetyOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { Spin } from 'antd';
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -20,7 +21,6 @@ interface PlanItem {
   isHot: boolean;
 }
 
-
 const HomePage = () => {
   const navigate = useNavigate();
   const [hotPlans, setHotPlans] = useState<PlanItem[]>([]);
@@ -32,7 +32,7 @@ const HomePage = () => {
         const res: any = await get('/plan');
         if (res.success) {
           const all: PlanItem[] = res.data || [];
-          setHotPlans(all.filter((p) => p.isHot));
+          setHotPlans(all.filter(p => p.isHot));
         }
       } finally {
         setLoading(false);
@@ -47,13 +47,15 @@ const HomePage = () => {
       <section className="hero">
         <div className="hero-bg" />
         <div className="hero-content">
-          <div className="hero-badge"><ThunderboltOutlined /> 全网低价 AI 订阅代充</div>
+          <div className="hero-badge">
+            <ThunderboltOutlined /> 全网低价 AI 订阅代充
+          </div>
           <h1>
             一键订阅<span className="gradient-text">全球顶级 AI</span>
           </h1>
           <p className="hero-desc">
-            无需海外信用卡，无需复杂操作。OneSub 为你提供 Claude、ChatGPT、Gemini
-            等热门 AI 工具的便捷代充订阅服务，支付宝扫码即充，极速开通。
+            无需海外信用卡，无需复杂操作。OneSub 为你提供 Claude、ChatGPT、Gemini 等热门 AI
+            工具的便捷代充订阅服务，支付宝扫码即充，极速开通。
           </p>
           <div className="hero-actions">
             <button className="btn-hero-primary" onClick={() => navigate('/plans')}>
@@ -89,21 +91,30 @@ const HomePage = () => {
           <p className="section-subtitle">简单三步，即刻拥有顶级 AI 能力</p>
           <div className="features-grid">
             <div className="feature-card">
-              <div className="feature-icon" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#0ea5e9' }}>
+              <div
+                className="feature-icon"
+                style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#0ea5e9' }}
+              >
                 <ThunderboltOutlined />
               </div>
               <h3>极速开通</h3>
               <p>支付宝扫码付款，客服确认后 5 分钟内完成开通，即刻使用</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}>
+              <div
+                className="feature-icon"
+                style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' }}
+              >
                 <SafetyOutlined />
               </div>
               <h3>安全可靠</h3>
               <p>支付宝安全支付，正规渠道订阅，账号安全有保障</p>
             </div>
             <div className="feature-card">
-              <div className="feature-icon" style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+              <div
+                className="feature-icon"
+                style={{ background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}
+              >
                 <RocketOutlined />
               </div>
               <h3>价格优惠</h3>
@@ -161,8 +172,7 @@ const HomePage = () => {
           )}
 
           <div className="more-plans">
-            更多套餐方案 →{' '}
-            <a onClick={() => navigate('/plans')}>查看全部</a>
+            更多套餐方案 → <a onClick={() => navigate('/plans')}>查看全部</a>
           </div>
         </div>
       </section>
@@ -171,7 +181,7 @@ const HomePage = () => {
       <section className="cta-section">
         <div className="cta-inner">
           <h2>准备好开始了吗？</h2>
-          <p>注册即享首单优惠码 WELCOME20，立减 ¥20</p>
+          <p>注册即享首单优惠码 WELCOMEAI，立减 ¥20</p>
           <button className="btn-hero-primary" onClick={() => navigate('/login?tab=register')}>
             免费注册，立即体验
           </button>

@@ -26,9 +26,11 @@ import {
   Tag,
   Upload,
 } from 'antd';
-import type { ColumnsType } from 'antd/es/table';
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+import type { ColumnsType } from 'antd/es/table';
 
 import { AUTH_CONFIG } from '@/constants/app.constants';
 import { get, post } from '@/services';
@@ -159,7 +161,7 @@ const AdminPage = () => {
           </p>
           <Input.TextArea
             placeholder="管理员备注（选填）"
-            onChange={(e) => (remark = e.target.value)}
+            onChange={e => (remark = e.target.value)}
             rows={2}
           />
         </div>
@@ -190,12 +192,12 @@ const AdminPage = () => {
               { label: '已完成', value: 'completed' },
               { label: '已取消', value: 'cancelled' },
             ]}
-            onChange={(v) => (newStatus = v)}
+            onChange={v => (newStatus = v)}
             style={{ width: '100%' }}
           />
           <Input.TextArea
             placeholder="管理员备注（选填）"
-            onChange={(e) => (remark = e.target.value)}
+            onChange={e => (remark = e.target.value)}
             rows={2}
           />
         </div>
@@ -222,7 +224,7 @@ const AdminPage = () => {
       title: '订单号',
       dataIndex: 'orderNo',
       key: 'orderNo',
-      render: (text) => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{text}</span>,
+      render: text => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{text}</span>,
       width: 200,
     },
     {
@@ -264,7 +266,7 @@ const AdminPage = () => {
       title: '时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: (text) => new Date(text).toLocaleString('zh-CN'),
+      render: text => new Date(text).toLocaleString('zh-CN'),
       width: 170,
     },
     {
@@ -377,7 +379,9 @@ const AdminPage = () => {
       const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
       const isPrd = import.meta.env.PROD;
       const baseUrl = isPrd
-        ? (window.location.pathname.endsWith('/') ? `${window.location.pathname}production` : `${window.location.pathname}/production`)
+        ? window.location.pathname.endsWith('/')
+          ? `${window.location.pathname}production`
+          : `${window.location.pathname}/production`
         : '/development';
       const res = await fetch(`${baseUrl}/plan/admin/import`, {
         method: 'POST',
@@ -484,7 +488,9 @@ const AdminPage = () => {
       const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
       const isPrd = import.meta.env.PROD;
       const baseUrl = isPrd
-        ? (window.location.pathname.endsWith('/') ? `${window.location.pathname}production` : `${window.location.pathname}/production`)
+        ? window.location.pathname.endsWith('/')
+          ? `${window.location.pathname}production`
+          : `${window.location.pathname}/production`
         : '/development';
       const res = await fetch(`${baseUrl}/coupon/admin/import`, {
         method: 'POST',
@@ -540,13 +546,13 @@ const AdminPage = () => {
       dataIndex: 'code',
       key: 'code',
       width: 140,
-      render: (text) => <Tag color="blue">{text}</Tag>,
+      render: text => <Tag color="blue">{text}</Tag>,
     },
     {
       title: '减免',
       dataIndex: 'discountAmount',
       key: 'discountAmount',
-      render: (v) => `¥${v}`,
+      render: v => `¥${v}`,
       width: 80,
     },
     {
@@ -560,7 +566,7 @@ const AdminPage = () => {
       dataIndex: 'isActive',
       key: 'isActive',
       width: 80,
-      render: (v) => <Tag color={v ? 'green' : 'default'}>{v ? '启用' : '停用'}</Tag>,
+      render: v => <Tag color={v ? 'green' : 'default'}>{v ? '启用' : '停用'}</Tag>,
     },
     {
       title: '操作',
@@ -587,7 +593,11 @@ const AdminPage = () => {
   const tabItems = [
     {
       key: 'orders',
-      label: <span><FileTextOutlined /> 订单管理</span>,
+      label: (
+        <span>
+          <FileTextOutlined /> 订单管理
+        </span>
+      ),
       children: (
         <div>
           <div className="admin-filter-bar">
@@ -595,7 +605,7 @@ const AdminPage = () => {
               placeholder="搜索用户名"
               prefix={<SearchOutlined />}
               value={orderUsername}
-              onChange={(e) => setOrderUsername(e.target.value)}
+              onChange={e => setOrderUsername(e.target.value)}
               onPressEnter={handleOrderSearch}
               style={{ width: 200 }}
               allowClear
@@ -603,7 +613,7 @@ const AdminPage = () => {
             <Select
               placeholder="订单状态"
               value={orderStatus}
-              onChange={(v) => setOrderStatus(v)}
+              onChange={v => setOrderStatus(v)}
               allowClear
               style={{ width: 140 }}
               options={Object.entries(statusMap).map(([k, v]) => ({ label: v.label, value: k }))}
@@ -634,7 +644,11 @@ const AdminPage = () => {
     },
     {
       key: 'plans',
-      label: <span><AppstoreOutlined /> 套餐管理</span>,
+      label: (
+        <span>
+          <AppstoreOutlined /> 套餐管理
+        </span>
+      ),
       children: (
         <div>
           <div className="admin-filter-bar">
@@ -644,7 +658,7 @@ const AdminPage = () => {
             <Upload
               accept=".json"
               showUploadList={false}
-              beforeUpload={(file) => {
+              beforeUpload={file => {
                 handleImportJSON(file);
                 return false;
               }}
@@ -674,7 +688,11 @@ const AdminPage = () => {
     },
     {
       key: 'coupons',
-      label: <span><GiftOutlined /> 优惠码管理</span>,
+      label: (
+        <span>
+          <GiftOutlined /> 优惠码管理
+        </span>
+      ),
       children: (
         <div>
           <div className="admin-filter-bar">
@@ -684,7 +702,7 @@ const AdminPage = () => {
             <Upload
               accept=".json"
               showUploadList={false}
-              beforeUpload={(file) => {
+              beforeUpload={file => {
                 handleImportCouponsJSON(file);
                 return false;
               }}
@@ -722,7 +740,7 @@ const AdminPage = () => {
       <Tabs
         defaultActiveKey="orders"
         items={tabItems}
-        onChange={(key) => {
+        onChange={key => {
           if (key === 'orders') fetchOrders();
           else if (key === 'plans') fetchPlans();
           else if (key === 'coupons') fetchCoupons();
@@ -739,7 +757,11 @@ const AdminPage = () => {
         width={560}
         centered
       >
-        <Form form={planForm} layout="vertical" initialValues={{ durationDays: 30, sortOrder: 0, isActive: true, isHot: false }}>
+        <Form
+          form={planForm}
+          layout="vertical"
+          initialValues={{ durationDays: 30, sortOrder: 0, isActive: true, isHot: false }}
+        >
           <Form.Item name="name" label="套餐名称" rules={[{ required: true }]}>
             <Input placeholder="例如：Claude Pro" />
           </Form.Item>
@@ -761,7 +783,10 @@ const AdminPage = () => {
             </Form.Item>
           </div>
           <Form.Item name="features" label="功能特性（每行一个）">
-            <Input.TextArea rows={4} placeholder="每行一个特性，例如：&#10;Claude Opus 4.6 解锁使用&#10;200K 超长上下文" />
+            <Input.TextArea
+              rows={4}
+              placeholder="每行一个特性，例如：&#10;Claude Opus 4.6 解锁使用&#10;200K 超长上下文"
+            />
           </Form.Item>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <Form.Item name="sortOrder" label="排序">
@@ -788,7 +813,7 @@ const AdminPage = () => {
       >
         <Form form={couponForm} layout="vertical" initialValues={{ maxUses: 1, isActive: true }}>
           <Form.Item name="code" label="优惠码" rules={[{ required: true }]}>
-            <Input placeholder="例如：WELCOME20" />
+            <Input placeholder="例如：WELCOMEAI" />
           </Form.Item>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Form.Item name="discountAmount" label="减免金额" rules={[{ required: true }]}>
