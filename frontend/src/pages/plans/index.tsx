@@ -180,7 +180,7 @@ const PlansPage = () => {
         open={payModalOpen}
         onCancel={() => setPayModalOpen(false)}
         footer={null}
-        width={480}
+        width={640}
         centered
         className="pay-modal"
       >
@@ -232,21 +232,23 @@ const PlansPage = () => {
               </div>
             </div>
 
-            {/* 支付宝收款码 */}
-            <div className="qr-section">
-              <div className="qr-step">第一步：使用支付宝扫码转账 <strong>¥{getActualPrice()}</strong></div>
-              <div className="qr-wrapper">
-                <img src={alipayQR} alt="支付宝收款码" className="qr-image" />
+            <div className="qr-container">
+              {/* 支付宝收款码 */}
+              <div className="qr-section">
+                <div className="qr-step">第一步：支付宝扫码转账 <strong>¥{getActualPrice()}</strong></div>
+                <div className="qr-wrapper">
+                  <img src={alipayQR} alt="支付宝收款码" className="qr-image" />
+                </div>
               </div>
-            </div>
 
-            {/* 微信客服 */}
-            <div className="qr-section">
-              <div className="qr-step">第二步：扫码添加微信客服，发送订单号确认开通</div>
-              <div className="qr-wrapper">
-                <img src={wechatQR} alt="微信客服" className="qr-image" />
+              {/* 微信客服 */}
+              <div className="qr-section">
+                <div className="qr-step">第二步：添加客服并发送订单号</div>
+                <div className="qr-wrapper">
+                  <img src={wechatQR} alt="微信客服" className="qr-image" />
+                </div>
+                <p className="qr-note">转账后联系客服，5 分钟内开通</p>
               </div>
-              <p className="qr-note">添加微信后发送订单号，客服确认收款后 5 分钟内开通</p>
             </div>
 
             <Button

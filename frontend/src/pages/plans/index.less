@@ -180,7 +180,7 @@
 .pay-modal-content {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 16px;
 }
 
 .pay-plan-info {
@@ -259,37 +259,51 @@
   font-weight: 900;
 }
 
+.qr-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  background: #f8fafc;
+  padding: 16px;
+  border-radius: 12px;
+}
+
 .qr-section {
+  flex: 1;
   text-align: center;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: center;
 }
 
 .qr-step {
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   color: #1a1a2e;
-  margin: 0 0 12px;
+  margin: 0 0 10px;
   text-align: center;
 }
 
 .qr-wrapper {
   display: inline-block;
-  padding: 12px;
+  padding: 8px;
   background: #fff;
   border: 2px solid #e2e8f0;
-  border-radius: 16px;
+  border-radius: 12px;
 }
 
 .qr-image {
-  width: 200px;
-  height: 200px;
+  width: 140px;
+  height: 140px;
   object-fit: contain;
   border-radius: 8px;
 }
 
 .qr-note {
-  font-size: 13px;
-  color: #94a3b8;
-  margin: 12px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  margin: 8px 0 0;
 }
 
 .pay-submit-btn {
