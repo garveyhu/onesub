@@ -87,7 +87,7 @@ const HomePage = () => {
           <p className="section-subtitle">简单三步，即刻拥有顶级 AI 能力</p>
           <div className="features-grid">
             <div className="feature-card">
-              <div className="feature-icon" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+              <div className="feature-icon" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#0ea5e9' }}>
                 <ThunderboltOutlined />
               </div>
               <h3>极速开通</h3>

@@ -16,7 +16,7 @@ const App = () => {
       locale={zhCN}
       theme={{
         token: {
-          colorPrimary: '#6366f1',
+          colorPrimary: '#0ea5e9',
           borderRadius: 8,
         },
       }}

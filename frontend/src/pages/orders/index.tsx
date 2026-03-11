@@ -1,3 +1,4 @@
+import { SyncOutlined } from '@ant-design/icons';
 import { App, Button, Empty, Spin, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
@@ -26,7 +27,7 @@ interface OrderItem {
 const statusMap: Record<string, { color: string; label: string }> = {
   pending: { color: 'orange', label: '待确认' },
   paid: { color: 'blue', label: '已确认收款' },
-  processing: { color: 'purple', label: '开通中' },
+  processing: { color: 'cyan', label: '开通中' },
   completed: { color: 'green', label: '已完成' },
   cancelled: { color: 'default', label: '已取消' },
 };
@@ -198,9 +199,14 @@ const OrdersPage = () => {
     <div className="orders-page">
       <div className="orders-header">
         <h1>我的订单</h1>
-        <Button type="primary" onClick={() => navigate('/plans')}>
-          购买套餐
-        </Button>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <Button icon={<SyncOutlined />} onClick={fetchOrders} loading={loading}>
+            刷新
+          </Button>
+          <Button type="primary" onClick={() => navigate('/plans')}>
+            购买套餐
+          </Button>
+        </div>
       </div>
 
       {loading ? (

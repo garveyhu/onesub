@@ -25,7 +25,7 @@ interface OrderItem {
 const statusMap: Record<string, { color: string; label: string }> = {
   pending: { color: 'orange', label: '待确认' },
   paid: { color: 'blue', label: '已确认收款' },
-  processing: { color: 'purple', label: '开通中' },
+  processing: { color: 'cyan', label: '开通中' },
   completed: { color: 'green', label: '已完成' },
   cancelled: { color: 'default', label: '已取消' },
 };
