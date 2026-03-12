@@ -1,4 +1,5 @@
 .app-container {
+  --app-header-height: 64px;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -12,7 +13,7 @@
   right: 0;
   z-index: 100;
   padding: 0 24px;
-  height: 64px;
+  min-height: 64px;
   display: flex;
   align-items: center;
   background: rgba(255, 255, 255, 0.8);
@@ -185,7 +186,7 @@
 /* Main */
 .app-main {
   flex: 1;
-  margin-top: 64px;
+  padding-top: var(--app-header-height, 64px);
 }
 
 /* Footer */

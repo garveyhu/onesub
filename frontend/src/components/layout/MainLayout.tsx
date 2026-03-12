@@ -1,5 +1,5 @@
 import { Modal } from 'antd';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
 import PreferenceSwitcher from '@/components/preferences/PreferenceSwitcher';
@@ -12,6 +12,7 @@ import './main-layout.less';
 const MainLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const headerRef = useRef<HTMLElement | null>(null);
   const [scrolled, setScrolled] = useState(false);
   const { t } = useAppPreferences();
 
@@ -32,6 +33,33 @@ const MainLayout = () => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    const headerElement = headerRef.current;
+    if (!headerElement) {
+      return;
+    }
+
+    /**
+     * 同步导航栏实际高度，避免响应式换行后遮挡页面顶部按钮。
+     */
+    const syncHeaderHeight = () => {
+      document.documentElement.style.setProperty(
+        '--app-header-height',
+        `${headerElement.offsetHeight}px`,
+      );
+    };
+
+    syncHeaderHeight();
+    const resizeObserver = new ResizeObserver(syncHeaderHeight);
+    resizeObserver.observe(headerElement);
+    window.addEventListener('resize', syncHeaderHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', syncHeaderHeight);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -72,7 +100,7 @@ const MainLayout = () => {
 
   return (
     <div className="app-container">
-      <header className={`app-header ${scrolled ? 'scrolled' : ''}`}>
+      <header ref={headerRef} className={`app-header ${scrolled ? 'scrolled' : ''}`}>
         <div className="header-inner">
           <div className="logo" onClick={() => navigate('/')}>
             <span className="logo-icon">O</span>
