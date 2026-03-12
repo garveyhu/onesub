@@ -26,13 +26,19 @@ def _check_admin(user: User):
 @router.get("/admin/list")
 def admin_list_orders(
     username: Optional[str] = Query(None, description="按用户名筛选"),
+    order_no: Optional[str] = Query(None, description="按订单号筛选"),
     status: Optional[str] = Query(None, description="按状态筛选"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """管理员：所有订单（支持筛选）"""
     _check_admin(current_user)
-    orders = OrderService.list_all(db, username_filter=username, status_filter=status)
+    orders = OrderService.list_all(
+        db, 
+        username_filter=username, 
+        order_no_filter=order_no,
+        status_filter=status
+    )
     result = []
     for o in orders:
         vo = OrderVO.model_validate(o)

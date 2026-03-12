@@ -29,6 +29,18 @@ class OrderService:
         if not plan:
             raise CustomException(ResultCode.NOT_FOUND, "套餐不存在或已下架")
 
+        # 检查未完成订单数量
+        pending_orders_count = (
+            db.query(Order)
+            .filter(
+                Order.user_id == user_id,
+                Order.status == "pending"
+            )
+            .count()
+        )
+        if pending_orders_count >= 3:
+            raise CustomException(ResultCode.FAIL, "您有太多未完成的订单，请先支付或取消")
+
         discount = 0.0
         coupon_code = None
 
@@ -115,12 +127,15 @@ class OrderService:
         db: Session,
         username_filter: Optional[str] = None,
         status_filter: Optional[str] = None,
+        order_no_filter: Optional[str] = None,
     ) -> list[dict]:
-        """获取所有订单（管理员），支持按用户名和状态筛选，返回带 username 的字典列表"""
+        """获取所有订单（管理员），支持按用户名、订单号和状态筛选，返回带 username 的字典列表"""
         query = db.query(Order, User.username).join(User, Order.user_id == User.id)
 
         if username_filter:
             query = query.filter(User.username.contains(username_filter))
+        if order_no_filter:
+            query = query.filter(Order.order_no.contains(order_no_filter))
         if status_filter:
             query = query.filter(Order.status == status_filter)
 

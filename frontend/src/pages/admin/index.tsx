@@ -83,6 +83,7 @@ const statusMap: Record<string, { color: string; label: string }> = {
   processing: { color: 'cyan', label: '开通中' },
   completed: { color: 'green', label: '已完成' },
   cancelled: { color: 'default', label: '已取消' },
+  deleted: { color: 'red', label: '已删除' },
 };
 
 const AdminPage = () => {
@@ -93,6 +94,7 @@ const AdminPage = () => {
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [orderUsername, setOrderUsername] = useState('');
+  const [searchOrderNo, setSearchOrderNo] = useState('');
   const [orderStatus, setOrderStatus] = useState<string | undefined>(undefined);
 
   // ---- Plans ----
@@ -130,11 +132,12 @@ const AdminPage = () => {
 
   // ==================== ORDERS ====================
 
-  const fetchOrders = async (username?: string, status?: string) => {
+  const fetchOrders = async (username?: string, orderNo?: string, status?: string) => {
     setOrdersLoading(true);
     try {
       const params = new URLSearchParams();
       if (username) params.set('username', username);
+      if (orderNo) params.set('order_no', orderNo);
       if (status) params.set('status', status);
       const qs = params.toString();
       const res: any = await get(`/order/admin/list${qs ? `?${qs}` : ''}`);
@@ -147,7 +150,7 @@ const AdminPage = () => {
   };
 
   const handleOrderSearch = () => {
-    fetchOrders(orderUsername || undefined, orderStatus);
+    fetchOrders(orderUsername, searchOrderNo, orderStatus);
   };
 
   const handleConfirmPaid = (order: OrderItem) => {
@@ -191,6 +194,7 @@ const AdminPage = () => {
               { label: '开通中', value: 'processing' },
               { label: '已完成', value: 'completed' },
               { label: '已取消', value: 'cancelled' },
+              { label: '已删除', value: 'deleted' },
             ]}
             onChange={v => (newStatus = v)}
             style={{ width: '100%' }}
@@ -602,12 +606,21 @@ const AdminPage = () => {
         <div>
           <div className="admin-filter-bar">
             <Input
+              placeholder="搜索订单号"
+              prefix={<SearchOutlined />}
+              value={searchOrderNo}
+              onChange={e => setSearchOrderNo(e.target.value)}
+              onPressEnter={handleOrderSearch}
+              style={{ width: 220 }}
+              allowClear
+            />
+            <Input
               placeholder="搜索用户名"
               prefix={<SearchOutlined />}
               value={orderUsername}
               onChange={e => setOrderUsername(e.target.value)}
               onPressEnter={handleOrderSearch}
-              style={{ width: 200 }}
+              style={{ width: 160 }}
               allowClear
             />
             <Select
