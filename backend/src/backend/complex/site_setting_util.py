@@ -5,10 +5,15 @@ from sqlalchemy.orm import Session
 from backend.models.site_setting import SiteSetting
 
 PUBLIC_SITE_URL = "https://sub.kerwin.cloud"
+DEFAULT_BACKUP_DIRECTORY = "./data/backups"
 LEGACY_PUBLIC_BASE_URLS = {
     "http://localhost:5173",
     "http://localhost:5173/#",
     "https://sub.kerwin.cloud/#",
+}
+LEGACY_BACKUP_DIRECTORIES = {
+    "./backups",
+    "backups",
 }
 
 DEFAULT_SITE_SETTINGS: dict[str, dict[str, str]] = {
@@ -25,7 +30,7 @@ DEFAULT_SITE_SETTINGS: dict[str, dict[str, str]] = {
     "auth_rate_limit_window_seconds": {"value": "600", "description": "认证限流时间窗秒数"},
     "auth_rate_limit_max_requests": {"value": "20", "description": "认证限流最大请求数"},
     "backup_enabled": {"value": "false", "description": "是否启用数据库备份"},
-    "backup_directory": {"value": "./backups", "description": "SQLite 备份目录"},
+    "backup_directory": {"value": DEFAULT_BACKUP_DIRECTORY, "description": "SQLite 备份目录"},
     "backup_interval_hours": {"value": "24", "description": "数据库备份间隔小时"},
     "report_daily_enabled": {"value": "false", "description": "是否启用每日经营报告"},
     "report_weekly_enabled": {"value": "false", "description": "是否启用每周经营报告"},
@@ -56,6 +61,12 @@ def ensure_default_settings(db: Session) -> None:
                 key == "public_base_url"
                 and item.value
                 and item.value.strip() in LEGACY_PUBLIC_BASE_URLS
+            ):
+                item.value = config["value"]
+                should_commit = True
+            if (
+                key == "backup_directory"
+                and (not item.value or item.value.strip() in LEGACY_BACKUP_DIRECTORIES)
             ):
                 item.value = config["value"]
                 should_commit = True

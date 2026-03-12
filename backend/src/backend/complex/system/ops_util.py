@@ -1,5 +1,7 @@
+import os
 import shutil
 import smtplib
+import sqlite3
 from datetime import timedelta
 from email.mime.text import MIMEText
 from pathlib import Path
@@ -10,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from backend.complex.config.inventory import DatabaseSettings
 from backend.complex.site_setting_util import (
+    DEFAULT_BACKUP_DIRECTORY,
     get_bool_setting,
     get_int_setting,
     get_setting,
@@ -23,28 +26,30 @@ from backend.models.ticket import Ticket
 from backend.models.user import User
 
 
-def create_sqlite_backup(db: Session) -> dict[str, Any] | None:
-    """按配置复制 SQLite 文件，供 NAS 或云盘目录同步。"""
+def create_sqlite_backup(
+    db: Session,
+    *,
+    require_enabled: bool = True,
+) -> dict[str, Any] | None:
+    """使用 SQLite 原生 backup API 生成备份，更适合 Docker/NAS 场景。"""
     if not DatabaseSettings.is_sqlite():
         return None
-    if not get_bool_setting(db, "backup_enabled", False):
+    if require_enabled and not get_bool_setting(db, "backup_enabled", False):
         return None
 
-    db_url = DatabaseSettings.get_url()
-    source_path = db_url.replace("sqlite:///", "")
-    backup_directory = Path(get_setting(db, "backup_directory", "./backups")).expanduser()
+    source = _resolve_sqlite_database_path()
+    backup_directory = _resolve_backup_directory(db)
     backup_directory.mkdir(parents=True, exist_ok=True)
-
-    source = Path(source_path)
-    if not source.exists():
+    if not source or not source.exists():
         return None
 
     filename = f"onesub-{now_cst().strftime('%Y%m%d-%H%M%S')}.db"
     target = backup_directory / filename
-    shutil.copy2(source, target)
+    _sqlite_backup(source, target)
     return {
         "filename": filename,
         "path": str(target),
+        "directory": str(backup_directory),
         "size_bytes": target.stat().st_size,
         "created_at": now_cst().isoformat(),
     }
@@ -52,7 +57,7 @@ def create_sqlite_backup(db: Session) -> dict[str, Any] | None:
 
 def list_backups(db: Session) -> list[dict[str, Any]]:
     """列出已生成的 SQLite 备份文件。"""
-    backup_directory = Path(get_setting(db, "backup_directory", "./backups")).expanduser()
+    backup_directory = _resolve_backup_directory(db)
     if not backup_directory.exists():
         return []
 
@@ -71,7 +76,10 @@ def list_backups(db: Session) -> list[dict[str, Any]]:
 
 def get_health_snapshot(db: Session, started_at_iso: str) -> dict[str, Any]:
     """聚合基础运行健康信息，便于后台面板展示。"""
-    total, used, free = shutil.disk_usage(Path.cwd())
+    database_path = _resolve_sqlite_database_path()
+    backup_directory = _resolve_backup_directory(db)
+    disk_root = _resolve_disk_usage_root(database_path, backup_directory)
+    total, used, free = shutil.disk_usage(disk_root)
 
     return {
         "server_time": now_cst().isoformat(),
@@ -86,12 +94,19 @@ def get_health_snapshot(db: Session, started_at_iso: str) -> dict[str, Any]:
         },
         "database": {
             "type": DatabaseSettings.get_type(),
+            "path": str(database_path) if database_path else "",
             "settings": db.query(func.count(SiteSetting.id)).scalar() or 0,
             "users": db.query(func.count(User.id)).scalar() or 0,
             "orders": db.query(func.count(Order.id)).scalar() or 0,
             "plans": db.query(func.count(Plan.id)).scalar() or 0,
             "tickets": db.query(func.count(Ticket.id)).scalar() or 0,
             "coupons": db.query(func.count(Coupon.id)).scalar() or 0,
+        },
+        "backup": {
+            "enabled": get_bool_setting(db, "backup_enabled", False),
+            "directory": str(backup_directory),
+            "directory_exists": backup_directory.exists(),
+            "writable": _is_path_writable(backup_directory),
         },
     }
 
@@ -224,3 +239,55 @@ def _format_report_text(report: dict[str, Any]) -> str:
             f"- {item['plan_name']}: {item['count']} 单 / ¥{item['revenue']}"
         )
     return "\n".join(lines)
+
+
+def _resolve_sqlite_database_path() -> Path | None:
+    """解析 SQLite 文件路径，兼容相对路径与容器工作目录。"""
+    db_url = DatabaseSettings.get_url()
+    if not db_url.startswith("sqlite:///"):
+        return None
+    return _resolve_runtime_path(db_url.replace("sqlite:///", "", 1))
+
+
+def _resolve_backup_directory(db: Session) -> Path:
+    """优先使用环境变量，其次使用站点配置，确保 NAS 可直接挂载。"""
+    configured_path = (
+        os.getenv("ONESUB_BACKUP_DIR", "").strip()
+        or get_setting(db, "backup_directory", DEFAULT_BACKUP_DIRECTORY).strip()
+        or DEFAULT_BACKUP_DIRECTORY
+    )
+    return _resolve_runtime_path(configured_path)
+
+
+def _resolve_runtime_path(raw_path: str) -> Path:
+    """将运行时路径转换为绝对路径，避免容器内相对路径混乱。"""
+    path = Path(raw_path).expanduser()
+    if path.is_absolute():
+        return path
+    return (Path.cwd() / path).resolve()
+
+
+def _sqlite_backup(source: Path, target: Path) -> None:
+    """通过 SQLite 原生备份接口复制数据库，避免直接拷贝产生不一致。"""
+    with sqlite3.connect(source.as_posix()) as source_conn:
+        with sqlite3.connect(target.as_posix()) as target_conn:
+            source_conn.backup(target_conn)
+
+
+def _resolve_disk_usage_root(database_path: Path | None, backup_directory: Path) -> Path:
+    """尽量统计数据卷所在挂载点，而不是容器根文件系统。"""
+    if database_path and database_path.exists():
+        return database_path.parent
+    if backup_directory.exists():
+        return backup_directory
+    return backup_directory.parent if backup_directory.parent.exists() else Path.cwd()
+
+
+def _is_path_writable(path: Path) -> bool:
+    """判断备份目录在当前容器里是否可写。"""
+    check_path = path if path.exists() else path.parent
+    try:
+        check_path.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        return False
+    return os.access(check_path, os.W_OK)

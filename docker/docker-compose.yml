@@ -1,15 +1,17 @@
-version: '3.8'
-
 services:
   onesub:
     build:
       context: ..
       dockerfile: docker/Dockerfile
+    environment:
+      - ONESUB_BACKUP_DIR=/app/backend/backups
     ports:
       - "80:80"
     volumes:
       - data-volume:/app/backend/data
+      - backup-volume:/app/backend/backups
     restart: always
 
 volumes:
   data-volume:
+  backup-volume:

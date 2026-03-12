@@ -4,11 +4,15 @@ services:
     container_name: onesub
     networks:
       - nginx_network
+    environment:
+      - ONESUB_BACKUP_DIR=/app/backend/backups
     ports:
       - 5373:80
     volumes:
       - /tmp/zfsv3/nvme13/15246330601/data/Onesub/data:/app/backend/data
+      - /tmp/zfsv3/nvme13/15246330601/data/Onesub/backups:/app/backend/backups
     restart: always
+
 networks:
   nginx_network:
     external: true

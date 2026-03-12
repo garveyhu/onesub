@@ -11,6 +11,7 @@ import {
   ImportOutlined,
   KeyOutlined,
   MessageOutlined,
+  NotificationOutlined,
   PlusOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -120,6 +121,16 @@ interface TicketItem {
   createdAt: string;
 }
 
+interface AnnouncementItem {
+  id: number;
+  title: string;
+  content: string | null;
+  type: string;
+  is_active: boolean;
+  sort_order: number;
+  created_at: string | null;
+}
+
 interface PlanItem {
   id: number;
   name: string;
@@ -157,6 +168,12 @@ interface HealthSnapshot {
   memory: { totalBytes: number; availableBytes: number; usagePercent: number };
   disk: { totalBytes: number; usedBytes: number; freeBytes: number; usagePercent: number };
   database: Record<string, number | string>;
+  backup?: {
+    enabled: boolean;
+    directory: string;
+    directoryExists: boolean;
+    writable: boolean;
+  };
 }
 
 interface BackupItem {
@@ -201,11 +218,18 @@ const ticketStatusMap: Record<string, { color: string; label: string }> = {
   closed: { color: 'default', label: '已关闭' },
 };
 
+const announcementTypeMap: Record<string, { color: string; label: string }> = {
+  info: { color: 'blue', label: '通知' },
+  warning: { color: 'orange', label: '提醒' },
+  success: { color: 'green', label: '成功' },
+};
+
 const adminTabLabels: Record<string, string> = {
   dashboard: '仪表盘',
   orders: '订单',
   users: '用户',
   tickets: '工单',
+  announcements: '公告',
   plans: '套餐',
   coupons: '优惠码',
   settings: '站点设置',
@@ -239,6 +263,12 @@ const AdminPage = () => {
   const [ticketReplyModalOpen, setTicketReplyModalOpen] = useState(false);
   const [ticketReply, setTicketReply] = useState('');
   const [currentTicket, setCurrentTicket] = useState<TicketItem | null>(null);
+
+  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
+  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
+  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
+  const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementItem | null>(null);
+  const [announcementForm] = Form.useForm();
 
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
@@ -327,6 +357,8 @@ const AdminPage = () => {
       await fetchUsers();
     } else if (key === 'tickets') {
       await fetchTickets();
+    } else if (key === 'announcements') {
+      await fetchAnnouncements();
     } else if (key === 'plans') {
       await fetchPlans();
     } else if (key === 'coupons') {
@@ -387,6 +419,16 @@ const AdminPage = () => {
       if (res.success) setTickets(res.data || []);
     } finally {
       setTicketsLoading(false);
+    }
+  };
+
+  const fetchAnnouncements = async () => {
+    setAnnouncementsLoading(true);
+    try {
+      const res: any = await get('/announcement/admin/list');
+      if (res.success) setAnnouncements(res.data || []);
+    } finally {
+      setAnnouncementsLoading(false);
     }
   };
 
@@ -616,6 +658,46 @@ const AdminPage = () => {
       setTicketReplyModalOpen(false);
       fetchTickets();
       fetchDashboard();
+    }
+  };
+
+  const openAnnouncementModal = (announcement?: AnnouncementItem) => {
+    setEditingAnnouncement(announcement || null);
+    if (announcement) {
+      announcementForm.setFieldsValue({
+        ...announcement,
+        content: announcement.content || '',
+      });
+    } else {
+      announcementForm.setFieldsValue({
+        title: '',
+        content: '',
+        type: 'info',
+        is_active: true,
+        sort_order: 0,
+      });
+    }
+    setAnnouncementModalOpen(true);
+  };
+
+  const handleSaveAnnouncement = async () => {
+    const values = await announcementForm.validateFields();
+    const url = editingAnnouncement
+      ? `/announcement/admin/${editingAnnouncement.id}/update`
+      : '/announcement/admin/create';
+    const res: any = await post(url, values);
+    if (res.success) {
+      message.success(editingAnnouncement ? '公告已更新' : '公告已创建');
+      setAnnouncementModalOpen(false);
+      fetchAnnouncements();
+    }
+  };
+
+  const handleDeleteAnnouncement = async (announcement: AnnouncementItem) => {
+    const res: any = await post(`/announcement/admin/${announcement.id}/delete`);
+    if (res.success) {
+      message.success('公告已删除');
+      fetchAnnouncements();
     }
   };
 
@@ -863,6 +945,43 @@ const AdminPage = () => {
         <Button size="small" onClick={() => openTicketReplyModal(record)}>
           回复
         </Button>
+      ),
+    },
+  ];
+
+  const announcementColumns: ColumnsType<AnnouncementItem> = [
+    { title: '标题', dataIndex: 'title', width: 180 },
+    { title: '内容', dataIndex: 'content', render: value => value || '-' },
+    {
+      title: '类型',
+      dataIndex: 'type',
+      render: value => {
+        const item = announcementTypeMap[value] || { color: 'default', label: value };
+        return <Tag color={item.color}>{item.label}</Tag>;
+      },
+    },
+    {
+      title: '状态',
+      dataIndex: 'is_active',
+      render: value => <Tag color={value ? 'green' : 'default'}>{value ? '展示中' : '已隐藏'}</Tag>,
+    },
+    { title: '排序', dataIndex: 'sort_order', width: 90 },
+    {
+      title: '创建时间',
+      dataIndex: 'created_at',
+      render: value => (value ? new Date(value).toLocaleString() : '-'),
+    },
+    {
+      title: '操作',
+      render: (_, record) => (
+        <Space>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openAnnouncementModal(record)}>
+            编辑
+          </Button>
+          <Button size="small" icon={<DeleteOutlined />} danger onClick={() => handleDeleteAnnouncement(record)}>
+            删除
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -1227,6 +1346,47 @@ const AdminPage = () => {
             ),
           },
           {
+            key: 'announcements',
+            label: (
+              <span>
+                <NotificationOutlined /> 公告
+              </span>
+            ),
+            children: (
+              <div className="admin-section-stack">
+                <div className="surface-card admin-toolbar-shell">
+                  <div className="admin-filter-bar">
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => openAnnouncementModal()}>
+                      新建公告
+                    </Button>
+                    <Button icon={<SyncOutlined />} onClick={() => void fetchAnnouncements()}>
+                      {t('refresh')}
+                    </Button>
+                  </div>
+                </div>
+                <div className="surface-card admin-table-shell">
+                  <div className="admin-table-caption">
+                    <div>
+                      <strong>公告管理</strong>
+                      <span>维护首页公告横幅的标题、内容、展示状态和排序。</span>
+                    </div>
+                    <span className="admin-caption-tag">
+                      展示中 {announcements.filter(item => item.is_active).length}
+                    </span>
+                  </div>
+                  <Table
+                    rowKey="id"
+                    loading={announcementsLoading}
+                    columns={announcementColumns}
+                    dataSource={announcements}
+                    className="admin-table"
+                    scroll={{ x: 960 }}
+                  />
+                </div>
+              </div>
+            ),
+          },
+          {
             key: 'plans',
             label: (
               <span>
@@ -1385,6 +1545,9 @@ const AdminPage = () => {
                       <Descriptions.Item label="CPU 1m">{health.cpuLoad.load1m}</Descriptions.Item>
                       <Descriptions.Item label="内存占用">{health.memory.usagePercent}%</Descriptions.Item>
                       <Descriptions.Item label="磁盘占用">{health.disk.usagePercent}%</Descriptions.Item>
+                      <Descriptions.Item label="数据库文件">{String(health.database.path || '-')}</Descriptions.Item>
+                      <Descriptions.Item label="备份目录">{health.backup?.directory || '-'}</Descriptions.Item>
+                      <Descriptions.Item label="备份写入">{health.backup?.writable ? '正常' : '不可写'}</Descriptions.Item>
                       <Descriptions.Item label="订单数">{String(health.database.orders)}</Descriptions.Item>
                     </Descriptions>
                   )}
@@ -1490,6 +1653,43 @@ const AdminPage = () => {
             </Form.Item>
           </div>
           <Form.Item name="isActive" label="启用" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={editingAnnouncement ? '编辑公告' : '新建公告'}
+        open={announcementModalOpen}
+        onOk={handleSaveAnnouncement}
+        onCancel={() => setAnnouncementModalOpen(false)}
+        width={520}
+      >
+        <Form
+          form={announcementForm}
+          layout="vertical"
+          initialValues={{ type: 'info', is_active: true, sort_order: 0 }}
+        >
+          <Form.Item name="title" label="公告标题" rules={[{ required: true, message: '请输入公告标题' }]}>
+            <Input />
+          </Form.Item>
+          <Form.Item name="content" label="公告内容">
+            <Input.TextArea rows={4} placeholder="可选，支持填写补充说明" />
+          </Form.Item>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <Form.Item name="type" label="公告类型" rules={[{ required: true }]}>
+              <Select
+                options={Object.entries(announcementTypeMap).map(([value, item]) => ({
+                  label: item.label,
+                  value,
+                }))}
+              />
+            </Form.Item>
+            <Form.Item name="sort_order" label="排序">
+              <InputNumber min={0} style={{ width: '100%' }} />
+            </Form.Item>
+          </div>
+          <Form.Item name="is_active" label="是否展示" valuePropName="checked">
             <Switch />
           </Form.Item>
         </Form>

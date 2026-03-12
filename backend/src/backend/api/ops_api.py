@@ -39,11 +39,11 @@ def run_backup(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """手动触发数据库备份。"""
+    """手动触发数据库备份，不依赖自动备份开关。"""
     _check_admin(current_user)
-    backup = create_sqlite_backup(db)
+    backup = create_sqlite_backup(db, require_enabled=False)
     if not backup:
-        raise CustomException(ResultCode.FAIL, "当前未启用 SQLite 备份")
+        raise CustomException(ResultCode.FAIL, "备份失败，请检查数据库类型、文件路径或备份目录权限")
     return Result.ok(backup)
 
 
