@@ -5,6 +5,7 @@
 """
 
 import json
+import uuid
 from pathlib import Path
 
 import bcrypt
@@ -28,10 +29,23 @@ def _hash_password(password: str) -> str:
     return bcrypt.hashpw(pwd_bytes, bcrypt.gensalt()).decode("utf-8")
 
 
+def _generate_invite_code(db: Session) -> str:
+    """生成一个未被占用的邀请码。"""
+    while True:
+        code = uuid.uuid4().hex[:8].upper()
+        exists = db.query(User.id).filter(User.invite_code == code).first()
+        if not exists:
+            return code
+
+
 def init_admin(db: Session):
     """检查并创建默认管理员账号"""
-    existing_admin = db.query(User).filter(User.is_admin == True).first()
+    existing_admin = db.query(User).filter(User.is_admin).first()
     if existing_admin:
+        if not existing_admin.invite_code:
+            existing_admin.invite_code = _generate_invite_code(db)
+            db.commit()
+            logger.info(f"已为管理员补全邀请码: {existing_admin.invite_code}")
         logger.info(f"管理员账号已存在: {existing_admin.username}，跳过")
         return
 
@@ -41,6 +55,7 @@ def init_admin(db: Session):
         email=DEFAULT_ADMIN_EMAIL,
         is_active=True,
         is_admin=True,
+        invite_code=_generate_invite_code(db),
     )
     db.add(admin)
     db.commit()

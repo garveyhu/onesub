@@ -1,7 +1,7 @@
 import json
 from typing import Optional
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, File, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -70,7 +70,7 @@ def check_coupon(
     """验证优惠码是否可用"""
     coupon = (
         db.query(Coupon)
-        .filter(Coupon.code == dto.code, Coupon.is_active == True)
+        .filter(Coupon.code == dto.code, Coupon.is_active)
         .first()
     )
     if not coupon:

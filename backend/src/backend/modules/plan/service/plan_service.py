@@ -14,7 +14,7 @@ class PlanService:
         """获取所有上架套餐（按 sort_order 排序）"""
         return (
             db.query(Plan)
-            .filter(Plan.is_active == True)
+            .filter(Plan.is_active)
             .order_by(Plan.sort_order.asc())
             .all()
         )

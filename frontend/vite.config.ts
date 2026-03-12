@@ -28,7 +28,7 @@ export default defineConfig({
         rewrite: path => path.replace(/^\/development/, ''),
       },
       '/production': {
-        target: 'https://www.example.com',
+        target: 'https://sub.kerwin.cloud',
         changeOrigin: true,
         rewrite: path => path.replace(/^\/production/, ''),
       },

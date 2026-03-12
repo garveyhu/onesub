@@ -28,6 +28,11 @@ const routes: RouteConfig[] = [
         meta: { title: '我的订单 - OneSub', auth: true },
       },
       {
+        path: '/orders/:orderId',
+        component: lazy(() => import('@/pages/order-detail')),
+        meta: { title: '订单详情 - OneSub', auth: true },
+      },
+      {
         path: '/profile',
         component: lazy(() => import('@/pages/profile')),
         meta: { title: '个人中心 - OneSub', auth: true },

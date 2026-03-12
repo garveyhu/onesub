@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Integer, String, text
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, text
 
 from backend.complex.database import Base
 
@@ -14,6 +14,12 @@ class User(Base):
     email = Column(String(200), nullable=True, index=True)
     is_active = Column(Boolean, default=True)
     is_admin = Column(Boolean, default=False, comment="是否管理员")
+    subscription_expires_at = Column(
+        DateTime(timezone=True), nullable=True, comment="订阅到期时间"
+    )
+    inviter_id = Column(Integer, nullable=True, index=True, comment="邀请人用户 ID")
+    invite_code = Column(String(32), nullable=False, unique=True, index=True, comment="邀请码")
+    reward_balance = Column(Float, nullable=False, default=0, comment="返利余额")
 
     created_at = Column(
         DateTime(timezone=True),

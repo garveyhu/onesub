@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -40,7 +40,7 @@ def list_active_announcements(db: Session = Depends(get_db)):
     """获取当前有效公告"""
     items = (
         db.query(Announcement)
-        .filter(Announcement.is_active == True)
+        .filter(Announcement.is_active)
         .order_by(Announcement.sort_order.asc(), Announcement.created_at.desc())
         .all()
     )

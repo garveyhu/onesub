@@ -1,6 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.complex.auth.oauth import get_current_user
@@ -8,6 +9,8 @@ from backend.complex.database import get_db
 from backend.complex.response.code import ResultCode
 from backend.complex.response.exception import CustomException
 from backend.complex.response.result import Result
+from backend.models.order import Order
+from backend.models.ticket import Ticket
 from backend.models.user import User
 from backend.modules.user.schemas.user_dto import (
     AdminResetPasswordDTO,
@@ -22,6 +25,15 @@ router = APIRouter(prefix="/user", tags=["用户"])
 def _check_admin(user: User):
     if not user.is_admin:
         raise CustomException(ResultCode.FORBIDDEN, "仅管理员可操作")
+
+
+def _build_self_update_dto(dto: UserUpdateDTO) -> UserUpdateDTO:
+    """过滤普通用户可修改字段，仅保留基础资料和密码。"""
+    return UserUpdateDTO(
+        username=dto.username,
+        password=dto.password,
+        email=dto.email,
+    )
 
 
 # ---- 管理员接口 ----
@@ -93,7 +105,40 @@ def admin_reset_password(
 
 @router.get("/profile")
 def get_profile(current_user: User = Depends(get_current_user)):
+    """获取当前用户基础资料。"""
     return Result.ok(UserVO.model_validate(current_user))
+
+
+@router.get("/profile/summary")
+def get_profile_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """获取当前用户个人中心摘要。"""
+    completed_statuses = ["paid", "processing", "completed", "refunded"]
+    return Result.ok(
+        {
+            "user": UserVO.model_validate(current_user),
+            "order_count": db.query(func.count(Order.id))
+            .filter(Order.user_id == current_user.id)
+            .scalar()
+            or 0,
+            "completed_order_count": db.query(func.count(Order.id))
+            .filter(
+                Order.user_id == current_user.id,
+                Order.status.in_(completed_statuses),
+            )
+            .scalar()
+            or 0,
+            "open_ticket_count": db.query(func.count(Ticket.id))
+            .filter(
+                Ticket.user_id == current_user.id,
+                Ticket.status.in_(["open", "processing"]),
+            )
+            .scalar()
+            or 0,
+        }
+    )
 
 
 @router.post("/{user_id}/update")
@@ -106,7 +151,8 @@ def update_user(
     """更新用户（管理员或本人）"""
     if not current_user.is_admin and current_user.id != user_id:
         raise CustomException(ResultCode.FORBIDDEN, "无权操作")
-    user = UserService.update(db, user_id, dto)
+    update_dto = dto if current_user.is_admin else _build_self_update_dto(dto)
+    user = UserService.update(db, user_id, update_dto)
     return Result.ok(UserVO.model_validate(user))
 
 

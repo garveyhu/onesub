@@ -2,8 +2,10 @@ import { Modal } from 'antd';
 import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 
+import PreferenceSwitcher from '@/components/preferences/PreferenceSwitcher';
 import wechatQR from '@/assets/images/wechat-links.jpg';
 import { AUTH_CONFIG } from '@/constants/app.constants';
+import { useAppPreferences } from '@/contexts/app-preferences';
 
 import './main-layout.less';
 
@@ -11,6 +13,7 @@ const MainLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
+  const { t } = useAppPreferences();
 
   const isLoggedIn = useMemo(() => {
     return !!localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
@@ -76,28 +79,49 @@ const MainLayout = () => {
             <span className="logo-text">OneSub</span>
           </div>
           <nav className="nav-links">
-            <a className={location.pathname === '/' ? 'active' : ''} onClick={() => navigate('/')}>首页</a>
-            <a className={location.pathname === '/plans' ? 'active' : ''} onClick={() => navigate('/plans')}>套餐</a>
-            {isLoggedIn && <a className={location.pathname === '/orders' ? 'active' : ''} onClick={() => navigate('/orders')}>我的订单</a>}
-            {isAdmin && <a className={location.pathname === '/admin' ? 'active' : ''} onClick={() => navigate('/admin')}>管理后台</a>}
+            <a className={location.pathname === '/' ? 'active' : ''} onClick={() => navigate('/')}>
+              {t('home')}
+            </a>
+            <a
+              className={location.pathname === '/plans' ? 'active' : ''}
+              onClick={() => navigate('/plans')}
+            >
+              {t('plans')}
+            </a>
+            {isLoggedIn && (
+              <a
+                className={location.pathname.startsWith('/orders') ? 'active' : ''}
+                onClick={() => navigate('/orders')}
+              >
+                {t('orders')}
+              </a>
+            )}
+            {isAdmin && (
+              <a
+                className={location.pathname === '/admin' ? 'active' : ''}
+                onClick={() => navigate('/admin')}
+              >
+                {t('admin')}
+              </a>
+            )}
           </nav>
           <div className="header-actions">
             {isLoggedIn ? (
               <>
                 <button className="btn-ghost" onClick={() => navigate('/profile')}>
-                  个人中心
+                  {t('profile')}
                 </button>
                 <button className="btn-ghost" onClick={handleLogout}>
-                  退出
+                  {t('logout')}
                 </button>
               </>
             ) : (
               <>
                 <button className="btn-ghost" onClick={() => navigate('/login')}>
-                  登录
+                  {t('login')}
                 </button>
                 <button className="btn-primary" onClick={() => navigate('/login?tab=register')}>
-                  注册
+                  {t('register')}
                 </button>
               </>
             )}
@@ -116,13 +140,15 @@ const MainLayout = () => {
             <span>OneSub</span>
           </div>
           <div className="footer-links">
-            <a onClick={() => navigate('/')}>首页</a>
-            <a onClick={() => navigate('/plans')}>套餐</a>
-            <a onClick={showWechatContact}>联系我们</a>
+            <a onClick={() => navigate('/')}>{t('home')}</a>
+            <a onClick={() => navigate('/plans')}>{t('plans')}</a>
+            <a onClick={showWechatContact}>{t('support')}</a>
           </div>
           <div className="footer-copy">© 2026 OneSub. All rights reserved.</div>
         </div>
       </footer>
+
+      <PreferenceSwitcher />
     </div>
   );
 };

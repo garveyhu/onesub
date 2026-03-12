@@ -27,6 +27,18 @@ class Order(Base):
     payment_method = Column(String(20), nullable=True, default="alipay", comment="支付方式")
     paid_at = Column(DateTime(timezone=True), nullable=True, comment="支付时间")
     completed_at = Column(DateTime(timezone=True), nullable=True, comment="完成时间")
+    expire_at = Column(DateTime(timezone=True), nullable=True, index=True, comment="支付截止时间")
+    payment_proof = Column(Text, nullable=True, comment="支付凭证")
+    progress_note = Column(Text, nullable=True, comment="开通进度")
+    refund_status = Column(
+        String(20),
+        nullable=False,
+        default="none",
+        comment="退款状态: none/requested/refunded/rejected",
+    )
+    refund_reason = Column(Text, nullable=True, comment="退款原因")
+    refund_amount = Column(Float, nullable=False, default=0, comment="退款金额")
+    refunded_at = Column(DateTime(timezone=True), nullable=True, comment="退款时间")
     remark = Column(Text, nullable=True, comment="备注")
     admin_remark = Column(Text, nullable=True, comment="管理员备注")
 

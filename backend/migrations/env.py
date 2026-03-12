@@ -27,6 +27,8 @@ import backend.models.announcement  # noqa: F401
 import backend.models.audit_log  # noqa: F401
 import backend.models.login_log  # noqa: F401
 import backend.models.site_setting  # noqa: F401
+import backend.models.ticket  # noqa: F401
+import backend.models.invite_reward  # noqa: F401
 
 target_metadata = Base.metadata
 

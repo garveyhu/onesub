@@ -1,6 +1,6 @@
 import json
 
-from fastapi import APIRouter, Depends, UploadFile, File
+from fastapi import APIRouter, Depends, File, UploadFile
 from sqlalchemy.orm import Session
 
 from backend.complex.auth.oauth import get_current_user
@@ -8,7 +8,6 @@ from backend.complex.database import get_db
 from backend.complex.response.code import ResultCode
 from backend.complex.response.exception import CustomException
 from backend.complex.response.result import Result
-from backend.models.coupon import Coupon
 from backend.models.plan import Plan
 from backend.models.user import User
 from backend.modules.plan.schemas.plan_dto import (

@@ -1,19 +1,16 @@
 import {
-  AlertOutlined,
   AppstoreOutlined,
-  AuditOutlined,
   CheckCircleOutlined,
+  CloudServerOutlined,
   CrownOutlined,
   DashboardOutlined,
   DeleteOutlined,
-  DownloadOutlined,
   EditOutlined,
   FileTextOutlined,
-  FireOutlined,
   GiftOutlined,
   ImportOutlined,
   KeyOutlined,
-  LoginOutlined,
+  MessageOutlined,
   PlusOutlined,
   SearchOutlined,
   SettingOutlined,
@@ -24,6 +21,7 @@ import {
 import {
   App,
   Button,
+  Descriptions,
   Form,
   Input,
   InputNumber,
@@ -37,33 +35,88 @@ import {
   Tag,
   Upload,
 } from 'antd';
-import ReactECharts from 'echarts-for-react';
-
 import { useEffect, useState } from 'react';
-import type { Key } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { ColumnsType } from 'antd/es/table';
 
 import { AUTH_CONFIG } from '@/constants/app.constants';
+import { useAppPreferences } from '@/contexts/app-preferences';
 import { basicUrl, get, post } from '@/services';
 
 import './index.less';
 
-// ---- Types ----
+interface OverviewStats {
+  totalUsers: number;
+  todayUsers: number;
+  totalOrders: number;
+  pendingOrders: number;
+  processingOrders: number;
+  totalRevenue: number;
+  todayRevenue: number;
+  activeSubscriptions: number;
+  openTickets: number;
+  totalPlans: number;
+  inviteRewards: number;
+}
+
+interface RetentionItem {
+  date: string;
+  newCustomers: number;
+  retainedCustomers: number;
+  retentionRate: number;
+}
+
+interface PlanSalesItem {
+  planName: string;
+  count: number;
+  revenue: number;
+  revenueShare: number;
+}
+
+interface CouponPerformanceItem {
+  couponCode: string;
+  usedCount: number;
+  revenue: number;
+}
 
 interface OrderItem {
   id: number;
   orderNo: string;
-  userId: number;
-  username: string;
+  username?: string;
   planName: string;
-  amount: number;
-  couponCode: string | null;
-  discountAmount: number;
   actualAmount: number;
+  discountAmount: number;
+  couponCode: string | null;
+  paymentMethod: string;
   status: string;
-  adminRemark: string | null;
+  expireAt: string | null;
+  paymentProof: string | null;
+  progressNote: string | null;
+  refundStatus: string;
+  refundAmount: number;
+  createdAt: string;
+}
+
+interface UserItem {
+  id: number;
+  username: string;
+  email: string | null;
+  isActive: boolean;
+  isAdmin: boolean;
+  inviteCode: string;
+  rewardBalance: number;
+  subscriptionExpiresAt: string | null;
+  createdAt: string;
+}
+
+interface TicketItem {
+  id: number;
+  username: string;
+  subject: string;
+  content: string;
+  status: string;
+  adminReply: string | null;
   createdAt: string;
 }
 
@@ -74,7 +127,7 @@ interface PlanItem {
   provider: string;
   durationDays: number;
   price: number;
-  originalPrice: number;
+  originalPrice: number | null;
   features: string[];
   isActive: boolean;
   isHot: boolean;
@@ -90,51 +143,6 @@ interface CouponItem {
   isActive: boolean;
 }
 
-const statusMap: Record<string, { color: string; label: string }> = {
-  pending: { color: 'orange', label: '待确认' },
-  paid: { color: 'blue', label: '已确认收款' },
-  processing: { color: 'cyan', label: '开通中' },
-  completed: { color: 'green', label: '已完成' },
-  cancelled: { color: 'default', label: '已取消' },
-  deleted: { color: 'red', label: '已删除' },
-};
-
-interface UserItem {
-  id: number;
-  username: string;
-  email: string | null;
-  isActive: boolean;
-  isAdmin: boolean;
-  createdAt: string;
-}
-
-interface StatsOverview {
-  totalUsers: number;
-  todayUsers: number;
-  totalOrders: number;
-  pendingOrders: number;
-  totalRevenue: number;
-  todayRevenue: number;
-  totalPlans: number;
-  totalCoupons: number;
-}
-
-interface TrendItem {
-  date: string;
-  orders: number;
-  revenue: number;
-}
-
-interface AnnouncementItem {
-  id: number;
-  title: string;
-  content: string | null;
-  type: string;
-  isActive: boolean;
-  sortOrder: number;
-  createdAt: string;
-}
-
 interface SettingItem {
   id: number;
   key: string;
@@ -142,183 +150,399 @@ interface SettingItem {
   description: string;
 }
 
-interface AuditLogItem {
-  id: number;
-  username: string;
-  action: string;
-  targetType: string | null;
-  targetId: string | null;
-  detail: string | null;
-  ip: string | null;
-  createdAt: string;
+interface HealthSnapshot {
+  serverTime: string;
+  startedAt: string;
+  cpuLoad: { load1m: number; load5m: number; load15m: number };
+  memory: { totalBytes: number; availableBytes: number; usagePercent: number };
+  disk: { totalBytes: number; usedBytes: number; freeBytes: number; usagePercent: number };
+  database: Record<string, number | string>;
 }
 
-interface LoginLogItem {
-  id: number;
-  username: string;
-  ip: string | null;
-  userAgent: string | null;
-  success: boolean;
-  failReason: string | null;
-  createdAt: string;
+interface BackupItem {
+  name: string;
+  path: string;
+  sizeBytes: number;
+  updatedAt: number;
 }
+
+interface ReportPreview {
+  generatedAt: string;
+  newUsers: number;
+  newOrders: number;
+  confirmedOrders: number;
+  newRevenue: number;
+  refundAmount: number;
+  couponOrderCount: number;
+  openTickets: number;
+  topPlans: { planName: string; count: number; revenue: number }[];
+}
+
+/**
+ * 统一格式化金额展示，避免统计面板里小数位风格不一致。
+ */
+function formatCurrency(value: number): string {
+  return `¥${value.toFixed(2)}`;
+}
+
+const orderStatusMap: Record<string, { color: string; label: string }> = {
+  pending: { color: 'orange', label: '待支付' },
+  paid: { color: 'blue', label: '已付款' },
+  processing: { color: 'cyan', label: '开通中' },
+  completed: { color: 'green', label: '已完成' },
+  refunded: { color: 'purple', label: '已退款' },
+  cancelled: { color: 'default', label: '已取消' },
+};
+
+const ticketStatusMap: Record<string, { color: string; label: string }> = {
+  open: { color: 'orange', label: '待处理' },
+  processing: { color: 'blue', label: '处理中' },
+  replied: { color: 'green', label: '已回复' },
+  closed: { color: 'default', label: '已关闭' },
+};
 
 const AdminPage = () => {
   const navigate = useNavigate();
   const { message, modal } = App.useApp();
+  const { t } = useAppPreferences();
 
-  // ---- Dashboard ----
-  const [stats, setStats] = useState<StatsOverview | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [trendData, setTrendData] = useState<TrendItem[]>([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [overview, setOverview] = useState<OverviewStats | null>(null);
+  const [retention, setRetention] = useState<RetentionItem[]>([]);
+  const [planSales, setPlanSales] = useState<PlanSalesItem[]>([]);
+  const [couponStats, setCouponStats] = useState<CouponPerformanceItem[]>([]);
+  const [dashboardLoading, setDashboardLoading] = useState(true);
 
-  // ---- Orders ----
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
-  const [orderUsername, setOrderUsername] = useState('');
-  const [searchOrderNo, setSearchOrderNo] = useState('');
-  const [orderStatus, setOrderStatus] = useState<string | undefined>(undefined);
-  const [selectedOrderIds, setSelectedOrderIds] = useState<Key[]>([]);
+  const [orderNoFilter, setOrderNoFilter] = useState('');
+  const [orderUsernameFilter, setOrderUsernameFilter] = useState('');
+  const [orderStatusFilter, setOrderStatusFilter] = useState<string | undefined>(undefined);
 
-  // ---- Users ----
   const [users, setUsers] = useState<UserItem[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
-  const [searchUsername, setSearchUsername] = useState('');
+  const [userKeyword, setUserKeyword] = useState('');
 
-  // ---- Announcements ----
-  const [announcements, setAnnouncements] = useState<AnnouncementItem[]>([]);
-  const [announcementsLoading, setAnnouncementsLoading] = useState(false);
-  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
-  const [editingAnnouncement, setEditingAnnouncement] = useState<AnnouncementItem | null>(null);
-  const [announcementForm] = Form.useForm();
+  const [tickets, setTickets] = useState<TicketItem[]>([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketReplyModalOpen, setTicketReplyModalOpen] = useState(false);
+  const [ticketReply, setTicketReply] = useState('');
+  const [currentTicket, setCurrentTicket] = useState<TicketItem | null>(null);
 
-  // ---- Site Settings ----
-  const [settings, setSettings] = useState<SettingItem[]>([]);
-  const [settingsLoading, setSettingsLoading] = useState(false);
-  const [settingsEditing, setSettingsEditing] = useState<Record<string, string>>({});
-
-  // ---- Audit Logs ----
-  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>([]);
-  const [auditTotal, setAuditTotal] = useState(0);
-  const [auditLoading, setAuditLoading] = useState(false);
-
-  // ---- Login Logs ----
-  const [loginLogs, setLoginLogs] = useState<LoginLogItem[]>([]);
-  const [loginTotal, setLoginTotal] = useState(0);
-  const [loginLoading, setLoginLoading] = useState(false);
-
-  // ---- Plans ----
   const [plans, setPlans] = useState<PlanItem[]>([]);
   const [plansLoading, setPlansLoading] = useState(false);
   const [planModalOpen, setPlanModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<PlanItem | null>(null);
   const [planForm] = Form.useForm();
 
-  // ---- Coupons ----
   const [coupons, setCoupons] = useState<CouponItem[]>([]);
   const [couponsLoading, setCouponsLoading] = useState(false);
   const [couponModalOpen, setCouponModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<CouponItem | null>(null);
   const [couponForm] = Form.useForm();
 
+  const [settings, setSettings] = useState<SettingItem[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [settingsEditing, setSettingsEditing] = useState<Record<string, string>>({});
+
+  const [health, setHealth] = useState<HealthSnapshot | null>(null);
+  const [backupItems, setBackupItems] = useState<BackupItem[]>([]);
+  const [reportPreview, setReportPreview] = useState<ReportPreview | null>(null);
+  const [opsLoading, setOpsLoading] = useState(false);
+  const totalCouponUses = couponStats.reduce((sum, item) => sum + item.usedCount, 0);
+  const totalCouponRevenue = couponStats.reduce((sum, item) => sum + item.revenue, 0);
+  const topCoupon = couponStats[0] || null;
+
   useEffect(() => {
     const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
-    if (!token) {
+    const rawUser = localStorage.getItem(AUTH_CONFIG.USER_INFO_KEY);
+    if (!token || !rawUser) {
       navigate('/login');
       return;
     }
-    const info = localStorage.getItem('user_info');
-    if (info) {
-      const user = JSON.parse(info);
-      if (!user.isAdmin) {
-        message.error('无权访问管理后台');
-        navigate('/');
-        return;
-      }
+    const user = JSON.parse(rawUser);
+    if (!user.isAdmin) {
+      message.error('无权访问管理后台');
+      navigate('/');
+      return;
     }
-    fetchStats();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigate]);
+    void fetchDashboard();
+  }, [message, navigate]);
 
-  // ==================== DASHBOARD ====================
-
-  const fetchStats = async () => {
-    setStatsLoading(true);
-    try {
-      const res: any = await get('/stats/overview');
-      if (res.success) setStats(res.data);
-      const tRes: any = await get('/stats/trend?days=7');
-      if (tRes.success) setTrendData(tRes.data || []);
-    } catch {
-      // silently fail
-    } finally {
-      setStatsLoading(false);
+  /**
+   * 在切换到对应页签时按需拉取数据，避免一次性请求过多接口。
+   */
+  const handleTabChange = async (key: string) => {
+    setActiveTab(key);
+    if (key === 'dashboard') {
+      await fetchDashboard();
+    } else if (key === 'orders') {
+      await fetchOrders();
+    } else if (key === 'users') {
+      await fetchUsers();
+    } else if (key === 'tickets') {
+      await fetchTickets();
+    } else if (key === 'plans') {
+      await fetchPlans();
+    } else if (key === 'coupons') {
+      await fetchCoupons();
+    } else if (key === 'settings') {
+      await fetchSettings();
+    } else if (key === 'ops') {
+      await fetchOpsData();
     }
   };
 
-  // ==================== USERS ====================
+  const fetchDashboard = async () => {
+    setDashboardLoading(true);
+    try {
+      const [overviewRes, retentionRes, planRes, couponRes] = await Promise.all([
+        get('/stats/overview'),
+        get('/stats/retention'),
+        get('/stats/plan-sales'),
+        get('/stats/coupon-performance'),
+      ]);
+      if ((overviewRes as any).success) setOverview((overviewRes as any).data);
+      if ((retentionRes as any).success) setRetention((retentionRes as any).data.curve || []);
+      if ((planRes as any).success) setPlanSales((planRes as any).data || []);
+      if ((couponRes as any).success) setCouponStats((couponRes as any).data || []);
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
 
-  const fetchUsers = async (username?: string) => {
-    setUsersLoading(true);
+  const fetchOrders = async () => {
+    setOrdersLoading(true);
     try {
       const params = new URLSearchParams();
-      if (username) params.set('username', username);
-      const qs = params.toString();
-      const res: any = await get(`/user/admin/list${qs ? `?${qs}` : ''}`);
+      if (orderNoFilter) params.set('order_no', orderNoFilter);
+      if (orderUsernameFilter) params.set('username', orderUsernameFilter);
+      if (orderStatusFilter) params.set('status', orderStatusFilter);
+      const res: any = await get(`/order/admin/list${params.toString() ? `?${params.toString()}` : ''}`);
+      if (res.success) setOrders(res.data || []);
+    } finally {
+      setOrdersLoading(false);
+    }
+  };
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const res: any = await get(`/user/admin/list${userKeyword ? `?username=${userKeyword}` : ''}`);
       if (res.success) setUsers(res.data || []);
-    } catch {
-      message.error('加载用户失败');
     } finally {
       setUsersLoading(false);
     }
   };
 
-  const handleToggleAdmin = (user: UserItem) => {
-    modal.confirm({
-      title: user.isAdmin ? '取消管理员' : '设为管理员',
-      content: `确定要${user.isAdmin ? '取消' : '设置'} ${user.username} 的管理员身份吗？`,
-      onOk: async () => {
-        const res: any = await post(`/user/admin/${user.id}/toggle-admin`);
-        if (res.success) {
-          message.success('已更新');
-          fetchUsers(searchUsername || undefined);
-        }
-      },
-    });
+  const fetchTickets = async () => {
+    setTicketsLoading(true);
+    try {
+      const res: any = await get('/ticket/admin/list');
+      if (res.success) setTickets(res.data || []);
+    } finally {
+      setTicketsLoading(false);
+    }
   };
 
-  const handleToggleActive = (user: UserItem) => {
-    modal.confirm({
-      title: user.isActive ? '禁用用户' : '启用用户',
-      content: `确定要${user.isActive ? '禁用' : '启用'} ${user.username} 吗？`,
-      okButtonProps: user.isActive ? { danger: true } : undefined,
-      onOk: async () => {
-        const res: any = await post(`/user/admin/${user.id}/toggle-active`);
-        if (res.success) {
-          message.success('已更新');
-          fetchUsers(searchUsername || undefined);
-        }
-      },
-    });
+  const fetchPlans = async () => {
+    setPlansLoading(true);
+    try {
+      const res: any = await get('/plan/admin/list');
+      if (res.success) setPlans(res.data || []);
+    } finally {
+      setPlansLoading(false);
+    }
   };
 
-  const handleResetPassword = (user: UserItem) => {
-    let newPwd = '';
+  const fetchCoupons = async () => {
+    setCouponsLoading(true);
+    try {
+      const res: any = await get('/coupon/admin/list');
+      if (res.success) setCoupons(res.data || []);
+    } finally {
+      setCouponsLoading(false);
+    }
+  };
+
+  const fetchSettings = async () => {
+    setSettingsLoading(true);
+    try {
+      const res: any = await get('/setting/admin/list');
+      if (res.success) {
+        setSettings(res.data || []);
+        const nextState: Record<string, string> = {};
+        (res.data || []).forEach((item: SettingItem) => {
+          nextState[item.key] = item.value;
+        });
+        setSettingsEditing(nextState);
+      }
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const fetchOpsData = async () => {
+    setOpsLoading(true);
+    try {
+      const [healthRes, backupRes, reportRes] = await Promise.all([
+        get('/ops/health'),
+        get('/ops/backup/list'),
+        get('/ops/report/preview?days=1'),
+      ]);
+      if ((healthRes as any).success) setHealth((healthRes as any).data);
+      if ((backupRes as any).success) setBackupItems((backupRes as any).data || []);
+      if ((reportRes as any).success) setReportPreview((reportRes as any).data);
+    } finally {
+      setOpsLoading(false);
+    }
+  };
+
+  const handleConfirmPaid = (order: OrderItem) => {
+    let adminRemark = '';
     modal.confirm({
-      title: `重置密码 — ${user.username}`,
+      title: `确认收款 - ${order.orderNo}`,
       content: (
-        <Input.Password
-          placeholder="请输入新密码（至少 6 位）"
-          onChange={e => (newPwd = e.target.value)}
+        <Input.TextArea
+          rows={3}
+          placeholder="管理员备注（可选）"
+          onChange={event => {
+            adminRemark = event.target.value;
+          }}
         />
       ),
       onOk: async () => {
-        if (!newPwd || newPwd.length < 6) {
+        const res: any = await post(`/order/admin/${order.id}/confirm`, {
+          adminRemark: adminRemark || undefined,
+        });
+        if (res.success) {
+          message.success('已确认收款');
+          fetchOrders();
+          fetchDashboard();
+        }
+      },
+    });
+  };
+
+  const handleUpdateOrderStatus = (order: OrderItem) => {
+    let status = 'processing';
+    let progressNote = '';
+    modal.confirm({
+      title: `更新状态 - ${order.orderNo}`,
+      content: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <Select
+            defaultValue="processing"
+            options={[
+              { label: '开通中', value: 'processing' },
+              { label: '已完成', value: 'completed' },
+              { label: '已取消', value: 'cancelled' },
+            ]}
+            onChange={value => {
+              status = value;
+            }}
+          />
+          <Input.TextArea
+            rows={3}
+            placeholder="进度说明"
+            onChange={event => {
+              progressNote = event.target.value;
+            }}
+          />
+        </div>
+      ),
+      onOk: async () => {
+        const res: any = await post(`/order/admin/${order.id}/status`, {
+          status,
+          progressNote: progressNote || undefined,
+        });
+        if (res.success) {
+          message.success('订单状态已更新');
+          fetchOrders();
+          fetchDashboard();
+        }
+      },
+    });
+  };
+
+  const handleRefund = (order: OrderItem) => {
+    let refundAmount = order.actualAmount;
+    let refundReason = '';
+    modal.confirm({
+      title: `处理退款 - ${order.orderNo}`,
+      content: (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <InputNumber
+            min={0}
+            max={order.actualAmount}
+            defaultValue={order.actualAmount}
+            style={{ width: '100%' }}
+            onChange={value => {
+              refundAmount = Number(value || 0);
+            }}
+          />
+          <Input.TextArea
+            rows={3}
+            placeholder="退款原因"
+            onChange={event => {
+              refundReason = event.target.value;
+            }}
+          />
+        </div>
+      ),
+      onOk: async () => {
+        if (!refundReason.trim()) {
+          message.warning('请填写退款原因');
+          throw new Error('missing refund reason');
+        }
+        const res: any = await post(`/order/admin/${order.id}/refund`, {
+          refundReason: refundReason.trim(),
+          refundAmount,
+        });
+        if (res.success) {
+          message.success('退款已记录');
+          fetchOrders();
+          fetchDashboard();
+        }
+      },
+    });
+  };
+
+  const handleToggleAdmin = async (user: UserItem) => {
+    const res: any = await post(`/user/admin/${user.id}/toggle-admin`);
+    if (res.success) {
+      message.success('管理员权限已更新');
+      fetchUsers();
+    }
+  };
+
+  const handleToggleActive = async (user: UserItem) => {
+    const res: any = await post(`/user/admin/${user.id}/toggle-active`);
+    if (res.success) {
+      message.success('用户状态已更新');
+      fetchUsers();
+    }
+  };
+
+  const handleResetPassword = (user: UserItem) => {
+    let nextPassword = '';
+    modal.confirm({
+      title: `重置密码 - ${user.username}`,
+      content: (
+        <Input.Password
+          placeholder="请输入新密码"
+          onChange={event => {
+            nextPassword = event.target.value;
+          }}
+        />
+      ),
+      onOk: async () => {
+        if (nextPassword.length < 6) {
           message.warning('密码至少 6 位');
-          throw new Error('密码太短');
+          throw new Error('password too short');
         }
         const res: any = await post(`/user/admin/${user.id}/reset-password`, {
-          newPassword: newPwd,
+          newPassword: nextPassword,
         });
         if (res.success) {
           message.success('密码已重置');
@@ -327,138 +551,131 @@ const AdminPage = () => {
     });
   };
 
-  const userColumns: ColumnsType<UserItem> = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: '用户名', dataIndex: 'username', key: 'username', width: 140 },
-    {
-      title: '邮箱',
-      dataIndex: 'email',
-      key: 'email',
-      render: v => v || '-',
-    },
-    {
-      title: '状态',
-      key: 'status',
-      width: 120,
-      render: (_, r) => (
-        <Space>
-          <Tag color={r.isActive ? 'green' : 'red'}>{r.isActive ? '正常' : '已禁用'}</Tag>
-          {r.isAdmin && (
-            <Tag color="blue">
-              <CrownOutlined /> 管理员
-            </Tag>
-          )}
-        </Space>
-      ),
-    },
-    {
-      title: '注册时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: text => new Date(text).toLocaleString('zh-CN'),
-      width: 170,
-    },
-    {
-      title: '操作',
-      key: 'action',
-      width: 280,
-      render: (_, record) => (
-        <Space>
-          <Button
-            icon={<CrownOutlined />}
-            size="small"
-            type={record.isAdmin ? 'primary' : 'default'}
-            onClick={() => handleToggleAdmin(record)}
-          >
-            {record.isAdmin ? '取消管理员' : '设为管理员'}
-          </Button>
-          <Button
-            icon={record.isActive ? <StopOutlined /> : <CheckCircleOutlined />}
-            size="small"
-            danger={record.isActive}
-            onClick={() => handleToggleActive(record)}
-          >
-            {record.isActive ? '禁用' : '启用'}
-          </Button>
-          <Button icon={<KeyOutlined />} size="small" onClick={() => handleResetPassword(record)} />
-        </Space>
-      ),
-    },
-  ];
-
-  // ==================== ANNOUNCEMENTS ====================
-
-  const fetchAnnouncements = async () => {
-    setAnnouncementsLoading(true);
-    try {
-      const res: any = await get('/announcement/admin/list');
-      if (res.success) setAnnouncements(res.data || []);
-    } catch {
-      message.error('加载公告失败');
-    } finally {
-      setAnnouncementsLoading(false);
-    }
+  const openTicketReplyModal = (ticket: TicketItem) => {
+    setCurrentTicket(ticket);
+    setTicketReply(ticket.adminReply || '');
+    setTicketReplyModalOpen(true);
   };
 
-  const openAnnouncementModal = (item?: AnnouncementItem) => {
-    if (item) {
-      setEditingAnnouncement(item);
-      announcementForm.setFieldsValue(item);
-    } else {
-      setEditingAnnouncement(null);
-      announcementForm.resetFields();
+  const handleReplyTicket = async () => {
+    if (!currentTicket || !ticketReply.trim()) {
+      message.warning('请输入回复内容');
+      return;
     }
-    setAnnouncementModalOpen(true);
-  };
-
-  const handleSaveAnnouncement = async () => {
-    const values = await announcementForm.validateFields();
-    let res: any;
-    if (editingAnnouncement) {
-      res = await post(`/announcement/admin/${editingAnnouncement.id}/update`, values);
-    } else {
-      res = await post('/announcement/admin/create', values);
-    }
-    if (res.success) {
-      message.success(editingAnnouncement ? '已更新' : '已创建');
-      setAnnouncementModalOpen(false);
-      fetchAnnouncements();
-    }
-  };
-
-  const handleDeleteAnnouncement = (item: AnnouncementItem) => {
-    modal.confirm({
-      title: '确认删除',
-      content: `确定要删除公告「${item.title}」吗？`,
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        const res: any = await post(`/announcement/admin/${item.id}/delete`);
-        if (res.success) {
-          message.success('已删除');
-          fetchAnnouncements();
-        }
-      },
+    const res: any = await post(`/ticket/admin/${currentTicket.id}/reply`, {
+      adminReply: ticketReply.trim(),
+      status: 'replied',
     });
+    if (res.success) {
+      message.success('工单已回复');
+      setTicketReplyModalOpen(false);
+      fetchTickets();
+      fetchDashboard();
+    }
   };
 
-  // ==================== SITE SETTINGS ====================
+  const openPlanModal = (plan?: PlanItem) => {
+    setEditingPlan(plan || null);
+    if (plan) {
+      planForm.setFieldsValue({
+        ...plan,
+        features: (plan.features || []).join('\n'),
+      });
+    } else {
+      planForm.resetFields();
+    }
+    setPlanModalOpen(true);
+  };
 
-  const fetchSettings = async () => {
-    setSettingsLoading(true);
-    try {
-      const res: any = await get('/setting/admin/list');
-      if (res.success) {
-        setSettings(res.data || []);
-        const map: Record<string, string> = {};
-        (res.data || []).forEach((s: SettingItem) => {
-          map[s.key] = s.value;
-        });
-        setSettingsEditing(map);
-      }
-    } catch {
-      message.error('加载设置失败');
-    } finally {
-      setSettingsLoading(false);
+  const handleSavePlan = async () => {
+    const values = await planForm.validateFields();
+    const payload = {
+      ...values,
+      features: values.features
+        ? values.features
+            .split('\n')
+            .map((item: string) => item.trim())
+            .filter(Boolean)
+        : [],
+    };
+    const url = editingPlan ? `/plan/${editingPlan.id}/update` : '/plan/create';
+    const res: any = await post(url, payload);
+    if (res.success) {
+      message.success(editingPlan ? '套餐已更新' : '套餐已创建');
+      setPlanModalOpen(false);
+      fetchPlans();
+    }
+  };
+
+  const handleDeletePlan = async (plan: PlanItem) => {
+    const res: any = await post(`/plan/${plan.id}/delete`);
+    if (res.success) {
+      message.success('套餐已删除');
+      fetchPlans();
+    }
+  };
+
+  const handleImportPlans = async (file: File) => {
+    const formData = new FormData();
+    const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
+    formData.append('file', file);
+    const res = await fetch(`${basicUrl}/plan/admin/import`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.success) {
+      message.success('套餐导入完成');
+      fetchPlans();
+    }
+  };
+
+  const openCouponModal = (coupon?: CouponItem) => {
+    setEditingCoupon(coupon || null);
+    if (coupon) {
+      couponForm.setFieldsValue(coupon);
+    } else {
+      couponForm.resetFields();
+    }
+    setCouponModalOpen(true);
+  };
+
+  const handleSaveCoupon = async () => {
+    const values = await couponForm.validateFields();
+    const url = editingCoupon ? `/coupon/admin/${editingCoupon.id}/update` : '/coupon/admin/create';
+    const res: any = await post(url, values);
+    if (res.success) {
+      message.success(editingCoupon ? '优惠码已更新' : '优惠码已创建');
+      setCouponModalOpen(false);
+      fetchCoupons();
+      fetchDashboard();
+    }
+  };
+
+  const handleDeleteCoupon = async (coupon: CouponItem) => {
+    const res: any = await post(`/coupon/admin/${coupon.id}/delete`);
+    if (res.success) {
+      message.success('优惠码已删除');
+      fetchCoupons();
+      fetchDashboard();
+    }
+  };
+
+  const handleImportCoupons = async (file: File) => {
+    const formData = new FormData();
+    const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
+    formData.append('file', file);
+    const res = await fetch(`${basicUrl}/coupon/admin/import`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+    if (data.success) {
+      message.success('优惠码导入完成');
+      fetchCoupons();
+      fetchDashboard();
     }
   };
 
@@ -471,1078 +688,188 @@ const AdminPage = () => {
     }
   };
 
-  // ==================== AUDIT LOGS ====================
-
-  const fetchAuditLogs = async (page = 1) => {
-    setAuditLoading(true);
-    try {
-      const res: any = await get(`/audit/admin/list?page=${page}&page_size=20`);
-      if (res.success) {
-        setAuditLogs(res.data.items || []);
-        setAuditTotal(res.data.total || 0);
-      }
-    } catch {
-      message.error('加载操作日志失败');
-    } finally {
-      setAuditLoading(false);
+  const handleRunBackup = async () => {
+    const res: any = await post('/ops/backup/run');
+    if (res.success) {
+      message.success('数据库备份成功');
+      fetchOpsData();
     }
   };
 
-  // ==================== LOGIN LOGS ====================
-
-  const fetchLoginLogs = async (page = 1) => {
-    setLoginLoading(true);
-    try {
-      const res: any = await get(`/audit/admin/login-logs?page=${page}&page_size=20`);
-      if (res.success) {
-        setLoginLogs(res.data.items || []);
-        setLoginTotal(res.data.total || 0);
-      }
-    } catch {
-      message.error('加载登录日志失败');
-    } finally {
-      setLoginLoading(false);
-    }
-  };
-
-  // ==================== ORDER ENHANCEMENTS ====================
-
-  const handleExportCSV = () => {
+  const handleExportOrders = async () => {
     const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
-    const link = document.createElement('a');
-    link.href = `${basicUrl}/order/admin/export`;
-    // Use fetch with auth header
-    fetch(`${basicUrl}/order/admin/export`, {
+    const response = await fetch(`${basicUrl}/order/admin/export`, {
       headers: { Authorization: `Bearer ${token}` },
-    })
-      .then(r => r.blob())
-      .then(blob => {
-        const url = URL.createObjectURL(blob);
-        link.href = url;
-        link.download = 'orders.csv';
-        link.click();
-        URL.revokeObjectURL(url);
-        message.success('CSV 已导出');
-      })
-      .catch(() => message.error('导出失败'));
+    });
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'orders.csv';
+    anchor.click();
+    URL.revokeObjectURL(url);
   };
 
-  const handleBatchConfirm = () => {
-    if (selectedOrderIds.length === 0) {
-      message.warning('请先选择订单');
-      return;
+  const handleSendReport = async () => {
+    const res: any = await post('/ops/report/send?days=1');
+    if (res.success) {
+      message.success(res.data.sent ? '经营报告已发送' : '报告已生成，但邮件未发出');
+      fetchOpsData();
     }
-    modal.confirm({
-      title: `批量确认收款`,
-      content: `确定要批量确认 ${selectedOrderIds.length} 笔订单的收款吗？`,
-      onOk: async () => {
-        const res: any = await post('/order/admin/batch-confirm', { ids: selectedOrderIds });
-        if (res.success) {
-          message.success(`已确认 ${res.data.confirmed} 笔`);
-          setSelectedOrderIds([]);
-          fetchOrders();
-        }
-      },
-    });
-  };
-
-  const handleBatchStatus = (status: string) => {
-    if (selectedOrderIds.length === 0) {
-      message.warning('请先选择订单');
-      return;
-    }
-    modal.confirm({
-      title: `批量更新状态`,
-      content: `确定要将 ${selectedOrderIds.length} 笔订单更新为${statusMap[status]?.label || status}吗？`,
-      onOk: async () => {
-        const res: any = await post('/order/admin/batch-status', { ids: selectedOrderIds, status });
-        if (res.success) {
-          message.success(`已更新 ${res.data.updated} 笔`);
-          setSelectedOrderIds([]);
-          fetchOrders();
-        }
-      },
-    });
-  };
-
-  // ==================== ORDERS ====================
-
-  const fetchOrders = async (username?: string, orderNo?: string, status?: string) => {
-    setOrdersLoading(true);
-    try {
-      const params = new URLSearchParams();
-      if (username) params.set('username', username);
-      if (orderNo) params.set('order_no', orderNo);
-      if (status) params.set('status', status);
-      const qs = params.toString();
-      const res: any = await get(`/order/admin/list${qs ? `?${qs}` : ''}`);
-      if (res.success) setOrders(res.data || []);
-    } catch {
-      message.error('加载订单失败');
-    } finally {
-      setOrdersLoading(false);
-    }
-  };
-
-  const handleOrderSearch = () => {
-    fetchOrders(orderUsername, searchOrderNo, orderStatus);
-  };
-
-  const handleConfirmPaid = (order: OrderItem) => {
-    let remark = '';
-    modal.confirm({
-      title: `确认收款 — ${order.orderNo}`,
-      content: (
-        <div>
-          <p>
-            用户: {order.username} | 套餐: {order.planName} | 实付: ¥{order.actualAmount}
-          </p>
-          <Input.TextArea
-            placeholder="管理员备注（选填）"
-            onChange={e => (remark = e.target.value)}
-            rows={2}
-          />
-        </div>
-      ),
-      onOk: async () => {
-        const res: any = await post(`/order/admin/${order.id}/confirm`, {
-          adminRemark: remark || undefined,
-        });
-        if (res.success) {
-          message.success('已确认收款');
-          handleOrderSearch();
-        }
-      },
-    });
-  };
-
-  const handleChangeStatus = (order: OrderItem) => {
-    let newStatus = '';
-    let remark = '';
-    modal.confirm({
-      title: `更新状态 — ${order.orderNo}`,
-      content: (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 12 }}>
-          <Select
-            placeholder="选择新状态"
-            options={[
-              { label: '开通中', value: 'processing' },
-              { label: '已完成', value: 'completed' },
-              { label: '已取消', value: 'cancelled' },
-              { label: '已删除', value: 'deleted' },
-            ]}
-            onChange={v => (newStatus = v)}
-            style={{ width: '100%' }}
-          />
-          <Input.TextArea
-            placeholder="管理员备注（选填）"
-            onChange={e => (remark = e.target.value)}
-            rows={2}
-          />
-        </div>
-      ),
-      onOk: async () => {
-        if (!newStatus) {
-          message.warning('请选择状态');
-          return;
-        }
-        const res: any = await post(`/order/admin/${order.id}/status`, {
-          status: newStatus,
-          adminRemark: remark || undefined,
-        });
-        if (res.success) {
-          message.success('状态已更新');
-          handleOrderSearch();
-        }
-      },
-    });
   };
 
   const orderColumns: ColumnsType<OrderItem> = [
-    {
-      title: '订单号',
-      dataIndex: 'orderNo',
-      key: 'orderNo',
-      render: text => <span style={{ fontFamily: 'monospace', fontSize: 12 }}>{text}</span>,
-      width: 200,
-    },
-    {
-      title: '用户',
-      dataIndex: 'username',
-      key: 'username',
-      width: 100,
-    },
-    {
-      title: '套餐',
-      dataIndex: 'planName',
-      key: 'planName',
-    },
-    {
-      title: '金额',
-      key: 'amount',
-      render: (_, record) => (
-        <div>
-          <div style={{ fontWeight: 600 }}>实付 ¥{record.actualAmount}</div>
-          {record.discountAmount > 0 && (
-            <div style={{ fontSize: 12, color: '#10b981' }}>
-              优惠 ¥{record.discountAmount}（码: {record.couponCode}）
-            </div>
-          )}
-        </div>
-      ),
-    },
+    { title: '订单号', dataIndex: 'orderNo', render: value => <span style={{ fontFamily: 'monospace' }}>{value}</span> },
+    { title: '用户', dataIndex: 'username', width: 120 },
+    { title: '套餐', dataIndex: 'planName' },
+    { title: '金额', render: (_, record) => `¥${record.actualAmount}` },
     {
       title: '状态',
       dataIndex: 'status',
-      key: 'status',
-      render: (status: string) => {
-        const info = statusMap[status] || { color: 'default', label: status };
-        return <Tag color={info.color}>{info.label}</Tag>;
+      render: value => {
+        const item = orderStatusMap[value] || { color: 'default', label: value };
+        return <Tag color={item.color}>{item.label}</Tag>;
       },
-      width: 120,
     },
-    {
-      title: '时间',
-      dataIndex: 'createdAt',
-      key: 'createdAt',
-      render: text => new Date(text).toLocaleString('zh-CN'),
-      width: 170,
-    },
+    { title: '凭证', dataIndex: 'paymentProof', render: value => value || '-' },
+    { title: '进度', dataIndex: 'progressNote', render: value => value || '-' },
+    { title: '截止时间', dataIndex: 'expireAt', render: value => (value ? new Date(value).toLocaleString() : '-') },
     {
       title: '操作',
-      key: 'action',
-      width: 200,
       render: (_, record) => (
-        <div style={{ display: 'flex', gap: 4 }}>
+        <Space wrap>
           {record.status === 'pending' && (
-            <Button type="primary" size="small" onClick={() => handleConfirmPaid(record)}>
+            <Button size="small" type="primary" onClick={() => handleConfirmPaid(record)}>
               确认收款
             </Button>
           )}
           {['paid', 'processing'].includes(record.status) && (
-            <Button size="small" onClick={() => handleChangeStatus(record)}>
+            <Button size="small" onClick={() => handleUpdateOrderStatus(record)}>
               更新状态
             </Button>
           )}
-        </div>
+          {['paid', 'processing', 'completed'].includes(record.status) && (
+            <Button size="small" danger onClick={() => handleRefund(record)}>
+              退款
+            </Button>
+          )}
+        </Space>
       ),
     },
   ];
 
-  // ==================== PLANS ====================
-
-  const fetchPlans = async () => {
-    setPlansLoading(true);
-    try {
-      const res: any = await get('/plan/admin/list');
-      if (res.success) setPlans(res.data || []);
-    } catch {
-      message.error('加载套餐失败');
-    } finally {
-      setPlansLoading(false);
-    }
-  };
-
-  const openPlanModal = (plan?: PlanItem) => {
-    if (plan) {
-      setEditingPlan(plan);
-      planForm.setFieldsValue({
-        name: plan.name,
-        description: plan.description,
-        provider: plan.provider,
-        durationDays: plan.durationDays,
-        price: plan.price,
-        originalPrice: plan.originalPrice,
-        features: (plan.features || []).join('\n'),
-        isActive: plan.isActive,
-        isHot: plan.isHot,
-        sortOrder: plan.sortOrder,
-      });
-    } else {
-      setEditingPlan(null);
-      planForm.resetFields();
-    }
-    setPlanModalOpen(true);
-  };
-
-  const handleSavePlan = async () => {
-    const values = await planForm.validateFields();
-    const features = values.features
-      ? values.features
-          .split('\n')
-          .map((s: string) => s.trim())
-          .filter(Boolean)
-      : [];
-    const payload = { ...values, features };
-
-    let res: any;
-    if (editingPlan) {
-      res = await post(`/plan/${editingPlan.id}/update`, payload);
-    } else {
-      res = await post('/plan/create', payload);
-    }
-    if (res.success) {
-      message.success(editingPlan ? '套餐已更新' : '套餐已创建');
-      setPlanModalOpen(false);
-      fetchPlans();
-    }
-  };
-
-  const handleDeletePlan = (plan: PlanItem) => {
-    modal.confirm({
-      title: '确认删除',
-      content: `确定要删除套餐「${plan.name}」吗？此操作不可撤销。`,
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        const res: any = await post(`/plan/${plan.id}/delete`);
-        if (res.success) {
-          message.success('已删除');
-          fetchPlans();
-        }
-      },
-    });
-  };
-
-  const handleToggleHot = async (plan: PlanItem) => {
-    const res: any = await post(`/plan/${plan.id}/update`, { isHot: !plan.isHot });
-    if (res.success) {
-      message.success(plan.isHot ? '已取消热门' : '已标记热门');
-      fetchPlans();
-    }
-  };
-
-  const handleImportJSON = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
-      const res = await fetch(`${basicUrl}/plan/admin/import`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        message.success(`导入成功：${data.data.imported} 个套餐`);
-        fetchPlans();
-      } else {
-        message.error(data.message || '导入失败');
-      }
-    } catch {
-      message.error('导入失败');
-    }
-  };
-
-  const planColumns: ColumnsType<PlanItem> = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    { title: '名称', dataIndex: 'name', key: 'name', width: 150 },
-    { title: '服务商', dataIndex: 'provider', key: 'provider', width: 100 },
+  const userColumns: ColumnsType<UserItem> = [
+    { title: '用户名', dataIndex: 'username' },
+    { title: '邮箱', dataIndex: 'email', render: value => value || '-' },
+    { title: '邀请码', dataIndex: 'inviteCode' },
+    { title: '返利余额', dataIndex: 'rewardBalance', render: value => `¥${Number(value).toFixed(2)}` },
     {
-      title: '价格',
-      key: 'price',
-      width: 100,
-      render: (_, r) => `¥${r.price}`,
+      title: '订阅到期',
+      dataIndex: 'subscriptionExpiresAt',
+      render: value => (value ? new Date(value).toLocaleString() : '-'),
     },
     {
       title: '状态',
-      key: 'status',
-      width: 120,
-      render: (_, r) => (
+      render: (_, record) => (
         <Space>
-          <Tag color={r.isActive ? 'green' : 'default'}>{r.isActive ? '上架' : '下架'}</Tag>
-          {r.isHot && <Tag color="volcano">🔥 热门</Tag>}
+          <Tag color={record.isActive ? 'green' : 'red'}>{record.isActive ? '正常' : '禁用'}</Tag>
+          {record.isAdmin && <Tag color="gold">管理员</Tag>}
         </Space>
       ),
     },
-    { title: '排序', dataIndex: 'sortOrder', key: 'sortOrder', width: 60 },
     {
       title: '操作',
-      key: 'action',
-      width: 220,
       render: (_, record) => (
-        <Space>
-          <Button icon={<EditOutlined />} size="small" onClick={() => openPlanModal(record)}>
-            编辑
+        <Space wrap>
+          <Button size="small" icon={<CrownOutlined />} onClick={() => handleToggleAdmin(record)}>
+            {record.isAdmin ? '取消管理员' : '设为管理员'}
           </Button>
           <Button
-            icon={<FireOutlined />}
             size="small"
-            type={record.isHot ? 'primary' : 'default'}
-            danger={record.isHot}
-            onClick={() => handleToggleHot(record)}
+            icon={record.isActive ? <StopOutlined /> : <CheckCircleOutlined />}
+            onClick={() => handleToggleActive(record)}
           >
-            {record.isHot ? '取消热门' : '热门'}
+            {record.isActive ? '禁用' : '启用'}
           </Button>
-          <Button
-            icon={<DeleteOutlined />}
-            size="small"
-            danger
-            onClick={() => handleDeletePlan(record)}
-          />
+          <Button size="small" icon={<KeyOutlined />} onClick={() => handleResetPassword(record)}>
+            重置密码
+          </Button>
         </Space>
       ),
     },
   ];
 
-  // ==================== COUPONS ====================
-
-  const fetchCoupons = async () => {
-    setCouponsLoading(true);
-    try {
-      const res: any = await get('/coupon/admin/list');
-      if (res.success) setCoupons(res.data || []);
-    } catch {
-      message.error('加载优惠码失败');
-    } finally {
-      setCouponsLoading(false);
-    }
-  };
-
-  const openCouponModal = (coupon?: CouponItem) => {
-    if (coupon) {
-      setEditingCoupon(coupon);
-      couponForm.setFieldsValue({
-        code: coupon.code,
-        discountAmount: coupon.discountAmount,
-        maxUses: coupon.maxUses,
-        isActive: coupon.isActive,
-      });
-    } else {
-      setEditingCoupon(null);
-      couponForm.resetFields();
-    }
-    setCouponModalOpen(true);
-  };
-
-  const handleImportCouponsJSON = async (file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    try {
-      const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
-      const res = await fetch(`${basicUrl}/coupon/admin/import`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success) {
-        message.success(`导入成功：${data.data.imported} 个优惠码`);
-        fetchCoupons();
-      } else {
-        message.error(data.message || '导入失败');
-      }
-    } catch {
-      message.error('导入失败');
-    }
-  };
-
-  const handleSaveCoupon = async () => {
-    const values = await couponForm.validateFields();
-    let res: any;
-    if (editingCoupon) {
-      res = await post(`/coupon/admin/${editingCoupon.id}/update`, values);
-    } else {
-      res = await post('/coupon/admin/create', values);
-    }
-    if (res.success) {
-      message.success(editingCoupon ? '优惠码已更新' : '优惠码已创建');
-      setCouponModalOpen(false);
-      fetchCoupons();
-    }
-  };
-
-  const handleDeleteCoupon = (coupon: CouponItem) => {
-    modal.confirm({
-      title: '确认删除',
-      content: `确定要删除优惠码「${coupon.code}」吗？`,
-      okButtonProps: { danger: true },
-      onOk: async () => {
-        const res: any = await post(`/coupon/admin/${coupon.id}/delete`);
-        if (res.success) {
-          message.success('已删除');
-          fetchCoupons();
-        }
+  const ticketColumns: ColumnsType<TicketItem> = [
+    { title: '用户', dataIndex: 'username', width: 120 },
+    { title: '标题', dataIndex: 'subject', width: 180 },
+    { title: '内容', dataIndex: 'content' },
+    {
+      title: '状态',
+      dataIndex: 'status',
+      render: value => {
+        const item = ticketStatusMap[value] || { color: 'default', label: value };
+        return <Tag color={item.color}>{item.label}</Tag>;
       },
-    });
-  };
+    },
+    { title: '管理员回复', dataIndex: 'adminReply', render: value => value || '-' },
+    {
+      title: '操作',
+      render: (_, record) => (
+        <Button size="small" onClick={() => openTicketReplyModal(record)}>
+          回复
+        </Button>
+      ),
+    },
+  ];
+
+  const planColumns: ColumnsType<PlanItem> = [
+    { title: '名称', dataIndex: 'name' },
+    { title: '服务商', dataIndex: 'provider', width: 120 },
+    { title: '售价', dataIndex: 'price', width: 100, render: value => `¥${value}` },
+    {
+      title: '状态',
+      render: (_, record) => (
+        <Space>
+          <Tag color={record.isActive ? 'green' : 'default'}>{record.isActive ? '上架' : '下架'}</Tag>
+          {record.isHot && <Tag color="volcano">热门</Tag>}
+        </Space>
+      ),
+    },
+    {
+      title: '操作',
+      render: (_, record) => (
+        <Space>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openPlanModal(record)}>
+            编辑
+          </Button>
+          <Button size="small" icon={<DeleteOutlined />} danger onClick={() => handleDeletePlan(record)}>
+            删除
+          </Button>
+        </Space>
+      ),
+    },
+  ];
 
   const couponColumns: ColumnsType<CouponItem> = [
-    { title: 'ID', dataIndex: 'id', key: 'id', width: 60 },
-    {
-      title: '优惠码',
-      dataIndex: 'code',
-      key: 'code',
-      width: 140,
-      render: text => <Tag color="blue">{text}</Tag>,
-    },
-    {
-      title: '减免',
-      dataIndex: 'discountAmount',
-      key: 'discountAmount',
-      render: v => `¥${v}`,
-      width: 80,
-    },
-    {
-      title: '已用 / 上限',
-      key: 'usage',
-      width: 120,
-      render: (_, r) => `${r.usedCount} / ${r.maxUses}`,
-    },
+    { title: '优惠码', dataIndex: 'code' },
+    { title: '减免金额', dataIndex: 'discountAmount', render: value => `¥${value}` },
+    { title: '使用情况', render: (_, record) => `${record.usedCount}/${record.maxUses}` },
     {
       title: '状态',
       dataIndex: 'isActive',
-      key: 'isActive',
-      width: 80,
-      render: v => <Tag color={v ? 'green' : 'default'}>{v ? '启用' : '停用'}</Tag>,
+      render: value => <Tag color={value ? 'green' : 'default'}>{value ? '启用' : '停用'}</Tag>,
     },
     {
       title: '操作',
-      key: 'action',
-      width: 160,
       render: (_, record) => (
         <Space>
-          <Button icon={<EditOutlined />} size="small" onClick={() => openCouponModal(record)}>
+          <Button size="small" icon={<EditOutlined />} onClick={() => openCouponModal(record)}>
             编辑
           </Button>
-          <Button
-            icon={<DeleteOutlined />}
-            size="small"
-            danger
-            onClick={() => handleDeleteCoupon(record)}
-          />
+          <Button size="small" icon={<DeleteOutlined />} danger onClick={() => handleDeleteCoupon(record)}>
+            删除
+          </Button>
         </Space>
-      ),
-    },
-  ];
-
-  // ==================== TABS ====================
-
-  const tabItems = [
-    {
-      key: 'dashboard',
-      label: (
-        <span>
-          <DashboardOutlined /> 数据概览
-        </span>
-      ),
-      children: (
-        <div>
-          {statsLoading ? (
-            <div className="admin-loading">
-              <Spin size="large" />
-            </div>
-          ) : stats ? (
-            <>
-              <div className="stats-grid">
-                <div className="stat-card">
-                  <div
-                    className="stat-card-icon"
-                    style={{ background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}
-                  >
-                    <TeamOutlined />
-                  </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-value">{stats.totalUsers}</span>
-                    <span className="stat-card-label">总用户</span>
-                  </div>
-                  <div className="stat-card-extra">今日 +{stats.todayUsers}</div>
-                </div>
-                <div className="stat-card">
-                  <div
-                    className="stat-card-icon"
-                    style={{ background: 'rgba(16,185,129,0.1)', color: '#10b981' }}
-                  >
-                    <FileTextOutlined />
-                  </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-value">{stats.totalOrders}</span>
-                    <span className="stat-card-label">总订单</span>
-                  </div>
-                  <div className="stat-card-extra">{stats.pendingOrders} 待处理</div>
-                </div>
-                <div className="stat-card">
-                  <div
-                    className="stat-card-icon"
-                    style={{ background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}
-                  >
-                    ¥
-                  </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-value">¥{stats.totalRevenue.toFixed(0)}</span>
-                    <span className="stat-card-label">总收入</span>
-                  </div>
-                  <div className="stat-card-extra">今日 ¥{stats.todayRevenue.toFixed(0)}</div>
-                </div>
-                <div className="stat-card">
-                  <div
-                    className="stat-card-icon"
-                    style={{ background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}
-                  >
-                    <AppstoreOutlined />
-                  </div>
-                  <div className="stat-card-info">
-                    <span className="stat-card-value">{stats.totalPlans}</span>
-                    <span className="stat-card-label">套餐</span>
-                  </div>
-                  <div className="stat-card-extra">{stats.totalCoupons} 优惠码</div>
-                </div>
-              </div>
-              {trendData.length > 0 && (
-                <div className="trend-chart-card">
-                  <h3>近 7 天趋势</h3>
-                  <ReactECharts
-                    option={{
-                      tooltip: { trigger: 'axis' },
-                      legend: { data: ['订单数', '收入 (¥)'], top: 0, left: 'center' },
-                      grid: { left: 50, right: 50, top: 50, bottom: 40 },
-                      xAxis: { type: 'category', data: trendData.map(t => t.date.slice(5)) },
-                      yAxis: [
-                        { type: 'value', name: '订单', minInterval: 1 },
-                        { type: 'value', name: '收入', position: 'right' },
-                      ],
-                      series: [
-                        {
-                          name: '订单数',
-                          type: 'bar',
-                          data: trendData.map(t => t.orders),
-                          itemStyle: { color: '#3b82f6', borderRadius: [4, 4, 0, 0] },
-                        },
-                        {
-                          name: '收入 (¥)',
-                          type: 'line',
-                          yAxisIndex: 1,
-                          data: trendData.map(t => t.revenue),
-                          smooth: true,
-                          itemStyle: { color: '#10b981' },
-                        },
-                      ],
-                    }}
-                    style={{ height: 300 }}
-                  />
-                </div>
-              )}
-            </>
-          ) : null}
-        </div>
-      ),
-    },
-    {
-      key: 'orders',
-      label: (
-        <span>
-          <FileTextOutlined /> 订单管理
-        </span>
-      ),
-      children: (
-        <div>
-          <div className="admin-filter-bar">
-            <Input
-              placeholder="搜索订单号"
-              prefix={<SearchOutlined />}
-              value={searchOrderNo}
-              onChange={e => setSearchOrderNo(e.target.value)}
-              onPressEnter={handleOrderSearch}
-              style={{ width: 200 }}
-              allowClear
-            />
-            <Input
-              placeholder="搜索用户名"
-              prefix={<SearchOutlined />}
-              value={orderUsername}
-              onChange={e => setOrderUsername(e.target.value)}
-              onPressEnter={handleOrderSearch}
-              style={{ width: 140 }}
-              allowClear
-            />
-            <Select
-              placeholder="订单状态"
-              value={orderStatus}
-              onChange={v => setOrderStatus(v)}
-              allowClear
-              style={{ width: 130 }}
-              options={Object.entries(statusMap).map(([k, v]) => ({ label: v.label, value: k }))}
-            />
-            <Button type="primary" icon={<SearchOutlined />} onClick={handleOrderSearch}>
-              搜索
-            </Button>
-            <Button icon={<SyncOutlined />} onClick={() => fetchOrders()}>
-              刷新
-            </Button>
-            <Button icon={<DownloadOutlined />} onClick={handleExportCSV}>
-              导出 CSV
-            </Button>
-            {selectedOrderIds.length > 0 && (
-              <>
-                <Button type="primary" onClick={handleBatchConfirm}>
-                  批量确认收款 ({selectedOrderIds.length})
-                </Button>
-                <Select
-                  placeholder="批量更新状态"
-                  style={{ width: 150 }}
-                  onChange={handleBatchStatus}
-                  options={[
-                    { label: '开通中', value: 'processing' },
-                    { label: '已完成', value: 'completed' },
-                    { label: '已取消', value: 'cancelled' },
-                  ]}
-                />
-              </>
-            )}
-          </div>
-          {ordersLoading ? (
-            <div className="admin-loading">
-              <Spin size="large" />
-            </div>
-          ) : (
-            <Table
-              columns={orderColumns}
-              dataSource={orders}
-              rowKey="id"
-              pagination={{ pageSize: 20 }}
-              className="admin-table"
-              scroll={{ x: 1100 }}
-              rowSelection={{
-                selectedRowKeys: selectedOrderIds,
-                onChange: keys => setSelectedOrderIds(keys),
-              }}
-            />
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'users',
-      label: (
-        <span>
-          <TeamOutlined /> 用户管理
-        </span>
-      ),
-      children: (
-        <div>
-          <div className="admin-filter-bar">
-            <Input
-              placeholder="搜索用户名"
-              prefix={<SearchOutlined />}
-              value={searchUsername}
-              onChange={e => setSearchUsername(e.target.value)}
-              onPressEnter={() => fetchUsers(searchUsername || undefined)}
-              style={{ width: 220 }}
-              allowClear
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={() => fetchUsers(searchUsername || undefined)}
-            >
-              搜索
-            </Button>
-            <Button icon={<SyncOutlined />} onClick={() => fetchUsers()}>
-              刷新
-            </Button>
-          </div>
-          {usersLoading ? (
-            <div className="admin-loading">
-              <Spin size="large" />
-            </div>
-          ) : (
-            <Table
-              columns={userColumns}
-              dataSource={users}
-              rowKey="id"
-              pagination={{ pageSize: 20 }}
-              className="admin-table"
-              scroll={{ x: 900 }}
-            />
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'plans',
-      label: (
-        <span>
-          <AppstoreOutlined /> 套餐管理
-        </span>
-      ),
-      children: (
-        <div>
-          <div className="admin-filter-bar">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openPlanModal()}>
-              新建套餐
-            </Button>
-            <Upload
-              accept=".json"
-              showUploadList={false}
-              beforeUpload={file => {
-                handleImportJSON(file);
-                return false;
-              }}
-            >
-              <Button icon={<ImportOutlined />}>导入 JSON</Button>
-            </Upload>
-            <Button icon={<SyncOutlined />} onClick={fetchPlans}>
-              刷新
-            </Button>
-          </div>
-          {plansLoading ? (
-            <div className="admin-loading">
-              <Spin size="large" />
-            </div>
-          ) : (
-            <Table
-              columns={planColumns}
-              dataSource={plans}
-              rowKey="id"
-              pagination={false}
-              className="admin-table"
-              scroll={{ x: 800 }}
-            />
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'coupons',
-      label: (
-        <span>
-          <GiftOutlined /> 优惠码管理
-        </span>
-      ),
-      children: (
-        <div>
-          <div className="admin-filter-bar">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openCouponModal()}>
-              新建优惠码
-            </Button>
-            <Upload
-              accept=".json"
-              showUploadList={false}
-              beforeUpload={file => {
-                handleImportCouponsJSON(file);
-                return false;
-              }}
-            >
-              <Button icon={<ImportOutlined />}>导入 JSON</Button>
-            </Upload>
-            <Button icon={<SyncOutlined />} onClick={fetchCoupons}>
-              刷新
-            </Button>
-          </div>
-          {couponsLoading ? (
-            <div className="admin-loading">
-              <Spin size="large" />
-            </div>
-          ) : (
-            <Table
-              columns={couponColumns}
-              dataSource={coupons}
-              rowKey="id"
-              pagination={false}
-              className="admin-table"
-            />
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'announcements',
-      label: (
-        <span>
-          <AlertOutlined /> 公告管理
-        </span>
-      ),
-      children: (
-        <div>
-          <div className="admin-filter-bar">
-            <Button type="primary" icon={<PlusOutlined />} onClick={() => openAnnouncementModal()}>
-              新建公告
-            </Button>
-            <Button icon={<SyncOutlined />} onClick={fetchAnnouncements}>
-              刷新
-            </Button>
-          </div>
-          {announcementsLoading ? (
-            <div className="admin-loading">
-              <Spin size="large" />
-            </div>
-          ) : (
-            <Table
-              columns={
-                [
-                  { title: 'ID', dataIndex: 'id', width: 60 },
-                  { title: '标题', dataIndex: 'title', width: 200 },
-                  { title: '内容', dataIndex: 'content', ellipsis: true },
-                  {
-                    title: '类型',
-                    dataIndex: 'type',
-                    width: 80,
-                    render: (v: string) => (
-                      <Tag color={v === 'warning' ? 'orange' : v === 'success' ? 'green' : 'blue'}>
-                        {v}
-                      </Tag>
-                    ),
-                  },
-                  {
-                    title: '状态',
-                    dataIndex: 'isActive',
-                    width: 80,
-                    render: (v: boolean) => (
-                      <Tag color={v ? 'green' : 'default'}>{v ? '显示' : '隐藏'}</Tag>
-                    ),
-                  },
-                  {
-                    title: '操作',
-                    width: 160,
-                    render: (_: unknown, r: AnnouncementItem) => (
-                      <Space>
-                        <Button
-                          icon={<EditOutlined />}
-                          size="small"
-                          onClick={() => openAnnouncementModal(r)}
-                        >
-                          编辑
-                        </Button>
-                        <Button
-                          icon={<DeleteOutlined />}
-                          size="small"
-                          danger
-                          onClick={() => handleDeleteAnnouncement(r)}
-                        />
-                      </Space>
-                    ),
-                  },
-                ] as ColumnsType<AnnouncementItem>
-              }
-              dataSource={announcements}
-              rowKey="id"
-              pagination={false}
-              className="admin-table"
-            />
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'settings',
-      label: (
-        <span>
-          <SettingOutlined /> 站点设置
-        </span>
-      ),
-      children: (
-        <div>
-          {settingsLoading ? (
-            <div className="admin-loading">
-              <Spin size="large" />
-            </div>
-          ) : (
-            <div className="settings-list">
-              {settings.map(s => (
-                <div key={s.key} className="setting-item">
-                  <div className="setting-label">
-                    <strong>{s.description}</strong>
-                    <span className="setting-key">{s.key}</span>
-                  </div>
-                  <Input
-                    value={settingsEditing[s.key] ?? s.value}
-                    onChange={e =>
-                      setSettingsEditing(prev => ({ ...prev, [s.key]: e.target.value }))
-                    }
-                    style={{ width: 360 }}
-                  />
-                </div>
-              ))}
-              <Button type="primary" onClick={handleSaveSettings} style={{ marginTop: 16 }}>
-                保存设置
-              </Button>
-            </div>
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'audit',
-      label: (
-        <span>
-          <AuditOutlined /> 操作日志
-        </span>
-      ),
-      children: (
-        <div>
-          {auditLoading ? (
-            <div className="admin-loading">
-              <Spin size="large" />
-            </div>
-          ) : (
-            <Table
-              columns={
-                [
-                  {
-                    title: '时间',
-                    dataIndex: 'createdAt',
-                    width: 170,
-                    render: (t: string) => new Date(t).toLocaleString('zh-CN'),
-                  },
-                  { title: '操作人', dataIndex: 'username', width: 100 },
-                  { title: '操作', dataIndex: 'action', width: 150 },
-                  { title: '目标', dataIndex: 'targetType', width: 80 },
-                  { title: 'ID', dataIndex: 'targetId', width: 60 },
-                  { title: '详情', dataIndex: 'detail', ellipsis: true },
-                ] as ColumnsType<AuditLogItem>
-              }
-              dataSource={auditLogs}
-              rowKey="id"
-              pagination={{ total: auditTotal, pageSize: 20, onChange: p => fetchAuditLogs(p) }}
-              className="admin-table"
-            />
-          )}
-        </div>
-      ),
-    },
-    {
-      key: 'loginLogs',
-      label: (
-        <span>
-          <LoginOutlined /> 登录日志
-        </span>
-      ),
-      children: (
-        <div>
-          {loginLoading ? (
-            <div className="admin-loading">
-              <Spin size="large" />
-            </div>
-          ) : (
-            <Table
-              columns={
-                [
-                  {
-                    title: '时间',
-                    dataIndex: 'createdAt',
-                    width: 170,
-                    render: (t: string) => new Date(t).toLocaleString('zh-CN'),
-                  },
-                  { title: '用户名', dataIndex: 'username', width: 120 },
-                  { title: 'IP', dataIndex: 'ip', width: 140 },
-                  {
-                    title: '结果',
-                    dataIndex: 'success',
-                    width: 80,
-                    render: (v: boolean) => (
-                      <Tag color={v ? 'green' : 'red'}>{v ? '成功' : '失败'}</Tag>
-                    ),
-                  },
-                  { title: '失败原因', dataIndex: 'failReason', width: 150 },
-                  { title: '浏览器', dataIndex: 'userAgent', ellipsis: true },
-                ] as ColumnsType<LoginLogItem>
-              }
-              dataSource={loginLogs}
-              rowKey="id"
-              pagination={{ total: loginTotal, pageSize: 20, onChange: p => fetchLoginLogs(p) }}
-              className="admin-table"
-            />
-          )}
-        </div>
       ),
     },
   ];
@@ -1550,99 +877,469 @@ const AdminPage = () => {
   return (
     <div className="admin-page">
       <div className="admin-header">
-        <h1>管理后台</h1>
+        <div>
+          <h1>{t('admin')}</h1>
+          <p>支付、订单、工单、运营数据与安全运维统一面板</p>
+        </div>
       </div>
 
       <Tabs
-        defaultActiveKey="dashboard"
-        items={tabItems}
-        onChange={key => {
-          if (key === 'dashboard') fetchStats();
-          else if (key === 'orders') fetchOrders();
-          else if (key === 'users') fetchUsers();
-          else if (key === 'plans') fetchPlans();
-          else if (key === 'coupons') fetchCoupons();
-          else if (key === 'announcements') fetchAnnouncements();
-          else if (key === 'settings') fetchSettings();
-          else if (key === 'audit') fetchAuditLogs();
-          else if (key === 'loginLogs') fetchLoginLogs();
-        }}
         className="admin-tabs"
+        activeKey={activeTab}
+        onChange={key => void handleTabChange(key)}
+        items={[
+          {
+            key: 'dashboard',
+            label: (
+              <span>
+                <DashboardOutlined /> 仪表盘
+              </span>
+            ),
+            children: dashboardLoading ? (
+              <div className="admin-loading">
+                <Spin size="large" />
+              </div>
+            ) : (
+              <div>
+                {overview && (
+                  <div className="stats-grid">
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: '#dbeafe', color: '#2563eb' }}>
+                        <TeamOutlined />
+                      </div>
+                      <div className="stat-card-info">
+                        <span className="stat-card-value">{overview.totalUsers}</span>
+                        <span className="stat-card-label">总用户</span>
+                      </div>
+                      <div className="stat-card-extra">今日 +{overview.todayUsers}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: '#dcfce7', color: '#16a34a' }}>
+                        <FileTextOutlined />
+                      </div>
+                      <div className="stat-card-info">
+                        <span className="stat-card-value">{overview.totalOrders}</span>
+                        <span className="stat-card-label">总订单</span>
+                      </div>
+                      <div className="stat-card-extra">{overview.pendingOrders} 待支付</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: '#fae8ff', color: '#9333ea' }}>
+                        ¥
+                      </div>
+                      <div className="stat-card-info">
+                        <span className="stat-card-value">¥{overview.totalRevenue.toFixed(0)}</span>
+                        <span className="stat-card-label">总收入</span>
+                      </div>
+                      <div className="stat-card-extra">今日 ¥{overview.todayRevenue.toFixed(0)}</div>
+                    </div>
+                    <div className="stat-card">
+                      <div className="stat-card-icon" style={{ background: '#fef3c7', color: '#d97706' }}>
+                        <MessageOutlined />
+                      </div>
+                      <div className="stat-card-info">
+                        <span className="stat-card-value">{overview.openTickets}</span>
+                        <span className="stat-card-label">待处理工单</span>
+                      </div>
+                      <div className="stat-card-extra">{overview.activeSubscriptions} 活跃订阅</div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="dashboard-section-grid">
+                  <div className="surface-card dashboard-panel">
+                    <h3>留存与复购</h3>
+                    <div className="simple-list">
+                      {retention.slice(-7).map(item => (
+                        <div key={item.date} className="simple-list-row">
+                          <span>{item.date}</span>
+                          <span>
+                            新客 {item.newCustomers} / 复购 {item.retainedCustomers} / {item.retentionRate}%
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="surface-card dashboard-panel">
+                    <h3>套餐销量排行</h3>
+                    <div className="simple-list">
+                      {planSales.map(item => (
+                        <div key={item.planName} className="simple-list-row">
+                          <span>{item.planName}</span>
+                          <span>{item.count} 单 / ¥{item.revenue} / {item.revenueShare}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="surface-card dashboard-panel coupon-performance-panel">
+                  <h3>优惠码使用统计</h3>
+                  <div className="coupon-performance">
+                    <div className="coupon-performance-summary">
+                      <div className="coupon-performance-stat">
+                        <span>活跃优惠码</span>
+                        <strong>{couponStats.length}</strong>
+                        <small>当前已产生使用记录</small>
+                      </div>
+                      <div className="coupon-performance-stat">
+                        <span>累计使用次数</span>
+                        <strong>{totalCouponUses}</strong>
+                        <small>覆盖全部已成交订单</small>
+                      </div>
+                      <div className="coupon-performance-stat">
+                        <span>累计贡献收入</span>
+                        <strong>{formatCurrency(totalCouponRevenue)}</strong>
+                        <small>由优惠码带来的成交金额</small>
+                      </div>
+                      <div className="coupon-performance-stat highlight">
+                        <span>最佳优惠码</span>
+                        <strong>{topCoupon?.couponCode || '--'}</strong>
+                        <small>
+                          {topCoupon
+                            ? `${topCoupon.usedCount} 次使用 · ${formatCurrency(topCoupon.revenue)}`
+                            : '暂无数据'}
+                        </small>
+                      </div>
+                    </div>
+
+                    <div className="coupon-performance-list">
+                      {couponStats.length > 0 ? (
+                        couponStats.map((item, index) => {
+                          const usagePercent = totalCouponUses
+                            ? Math.max((item.usedCount / totalCouponUses) * 100, 8)
+                            : 0;
+                          const revenueShare = totalCouponRevenue
+                            ? ((item.revenue / totalCouponRevenue) * 100).toFixed(1)
+                            : '0.0';
+
+                          return (
+                            <div key={item.couponCode} className="coupon-performance-item">
+                              <div className="coupon-performance-item-head">
+                                <div className="coupon-performance-rank">
+                                  {index === 0 ? <CrownOutlined /> : `#${String(index + 1).padStart(2, '0')}`}
+                                </div>
+                                <div className="coupon-performance-meta">
+                                  <strong>{item.couponCode}</strong>
+                                  <span>
+                                    使用 {item.usedCount} 次 · 收入占比 {revenueShare}%
+                                  </span>
+                                </div>
+                                <div className="coupon-performance-amount">
+                                  {formatCurrency(item.revenue)}
+                                </div>
+                              </div>
+                              <div className="coupon-performance-bar">
+                                <span style={{ width: `${usagePercent}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div className="coupon-performance-empty">
+                          暂无优惠码成交数据，等用户开始使用后会在这里展示排行。
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: 'orders',
+            label: (
+              <span>
+                <FileTextOutlined /> 订单
+              </span>
+            ),
+            children: (
+              <div>
+                <div className="admin-filter-bar">
+                  <Input placeholder="订单号" value={orderNoFilter} onChange={event => setOrderNoFilter(event.target.value)} />
+                  <Input placeholder="用户名" value={orderUsernameFilter} onChange={event => setOrderUsernameFilter(event.target.value)} />
+                  <Select
+                    allowClear
+                    placeholder="订单状态"
+                    value={orderStatusFilter}
+                    style={{ width: 160 }}
+                    onChange={value => setOrderStatusFilter(value)}
+                    options={Object.entries(orderStatusMap).map(([value, item]) => ({
+                      label: item.label,
+                      value,
+                    }))}
+                  />
+                  <Button type="primary" icon={<SearchOutlined />} onClick={() => void fetchOrders()}>
+                    搜索
+                  </Button>
+                  <Button icon={<SyncOutlined />} onClick={() => void fetchOrders()}>
+                    {t('refresh')}
+                  </Button>
+                  <Button onClick={handleExportOrders}>导出 CSV</Button>
+                </div>
+                <Table rowKey="id" loading={ordersLoading} columns={orderColumns} dataSource={orders} className="admin-table" scroll={{ x: 1200 }} />
+              </div>
+            ),
+          },
+          {
+            key: 'users',
+            label: (
+              <span>
+                <TeamOutlined /> 用户
+              </span>
+            ),
+            children: (
+              <div>
+                <div className="admin-filter-bar">
+                  <Input placeholder="搜索用户名" value={userKeyword} onChange={event => setUserKeyword(event.target.value)} />
+                  <Button type="primary" icon={<SearchOutlined />} onClick={() => void fetchUsers()}>
+                    搜索
+                  </Button>
+                  <Button icon={<SyncOutlined />} onClick={() => void fetchUsers()}>
+                    {t('refresh')}
+                  </Button>
+                </div>
+                <Table rowKey="id" loading={usersLoading} columns={userColumns} dataSource={users} className="admin-table" scroll={{ x: 1200 }} />
+              </div>
+            ),
+          },
+          {
+            key: 'tickets',
+            label: (
+              <span>
+                <MessageOutlined /> 工单
+              </span>
+            ),
+            children: <Table rowKey="id" loading={ticketsLoading} columns={ticketColumns} dataSource={tickets} className="admin-table" scroll={{ x: 1000 }} />,
+          },
+          {
+            key: 'plans',
+            label: (
+              <span>
+                <AppstoreOutlined /> 套餐
+              </span>
+            ),
+            children: (
+              <div>
+                <div className="admin-filter-bar">
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => openPlanModal()}>
+                    新建套餐
+                  </Button>
+                  <Upload
+                    accept=".json"
+                    showUploadList={false}
+                    beforeUpload={file => {
+                      void handleImportPlans(file);
+                      return false;
+                    }}
+                  >
+                    <Button icon={<ImportOutlined />}>导入 JSON</Button>
+                  </Upload>
+                  <Button icon={<SyncOutlined />} onClick={() => void fetchPlans()}>
+                    {t('refresh')}
+                  </Button>
+                </div>
+                <Table rowKey="id" loading={plansLoading} columns={planColumns} dataSource={plans} className="admin-table" />
+              </div>
+            ),
+          },
+          {
+            key: 'coupons',
+            label: (
+              <span>
+                <GiftOutlined /> 优惠码
+              </span>
+            ),
+            children: (
+              <div>
+                <div className="admin-filter-bar">
+                  <Button type="primary" icon={<PlusOutlined />} onClick={() => openCouponModal()}>
+                    新建优惠码
+                  </Button>
+                  <Upload
+                    accept=".json"
+                    showUploadList={false}
+                    beforeUpload={file => {
+                      void handleImportCoupons(file);
+                      return false;
+                    }}
+                  >
+                    <Button icon={<ImportOutlined />}>导入 JSON</Button>
+                  </Upload>
+                  <Button icon={<SyncOutlined />} onClick={() => void fetchCoupons()}>
+                    {t('refresh')}
+                  </Button>
+                </div>
+                <Table rowKey="id" loading={couponsLoading} columns={couponColumns} dataSource={coupons} className="admin-table" />
+              </div>
+            ),
+          },
+          {
+            key: 'settings',
+            label: (
+              <span>
+                <SettingOutlined /> 站点设置
+              </span>
+            ),
+            children: settingsLoading ? (
+              <div className="admin-loading">
+                <Spin size="large" />
+              </div>
+            ) : (
+              <div className="settings-list">
+                {settings.map(item => (
+                  <div key={item.key} className="setting-item">
+                    <div className="setting-label">
+                      <strong>{item.description}</strong>
+                      <span className="setting-key">{item.key}</span>
+                    </div>
+                    <Input
+                      value={settingsEditing[item.key]}
+                      onChange={event =>
+                        setSettingsEditing(prev => ({ ...prev, [item.key]: event.target.value }))
+                      }
+                      style={{ width: 360 }}
+                    />
+                  </div>
+                ))}
+                <Button type="primary" onClick={handleSaveSettings}>
+                  {t('save')}
+                </Button>
+              </div>
+            ),
+          },
+          {
+            key: 'ops',
+            label: (
+              <span>
+                <CloudServerOutlined /> {t('systemOps')}
+              </span>
+            ),
+            children: opsLoading ? (
+              <div className="admin-loading">
+                <Spin size="large" />
+              </div>
+            ) : (
+              <div className="dashboard-section-grid">
+                <div className="surface-card dashboard-panel">
+                  <div className="profile-panel-header">
+                    <div>
+                      <h3>健康检查</h3>
+                      <p>CPU、内存、磁盘、运行时长与数据库状态</p>
+                    </div>
+                    <Button icon={<SyncOutlined />} onClick={() => void fetchOpsData()}>
+                      {t('refresh')}
+                    </Button>
+                  </div>
+                  {health && (
+                    <Descriptions column={1} size="small">
+                      <Descriptions.Item label="服务时间">{new Date(health.serverTime).toLocaleString()}</Descriptions.Item>
+                      <Descriptions.Item label="启动时间">{new Date(health.startedAt).toLocaleString()}</Descriptions.Item>
+                      <Descriptions.Item label="CPU 1m">{health.cpuLoad.load1m}</Descriptions.Item>
+                      <Descriptions.Item label="内存占用">{health.memory.usagePercent}%</Descriptions.Item>
+                      <Descriptions.Item label="磁盘占用">{health.disk.usagePercent}%</Descriptions.Item>
+                      <Descriptions.Item label="订单数">{String(health.database.orders)}</Descriptions.Item>
+                    </Descriptions>
+                  )}
+                </div>
+
+                <div className="surface-card dashboard-panel">
+                  <div className="profile-panel-header">
+                    <div>
+                      <h3>数据备份</h3>
+                      <p>支持 SQLite 自动备份到本地/NAS 挂载目录</p>
+                    </div>
+                    <Button type="primary" onClick={handleRunBackup}>
+                      立即备份
+                    </Button>
+                  </div>
+                  <div className="simple-list">
+                    {backupItems.map(item => (
+                      <div key={item.name} className="simple-list-row">
+                        <span>{item.name}</span>
+                        <span>{(item.sizeBytes / 1024).toFixed(1)} KB</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="surface-card dashboard-panel full-width">
+                  <div className="profile-panel-header">
+                    <div>
+                      <h3>定时报表</h3>
+                      <p>支持每日/每周邮件发送，也可手动预览与发送</p>
+                    </div>
+                    <Button type="primary" onClick={handleSendReport}>
+                      发送今日报告
+                    </Button>
+                  </div>
+                  {reportPreview && (
+                    <Descriptions column={2}>
+                      <Descriptions.Item label="生成时间">{new Date(reportPreview.generatedAt).toLocaleString()}</Descriptions.Item>
+                      <Descriptions.Item label="新增用户">{reportPreview.newUsers}</Descriptions.Item>
+                      <Descriptions.Item label="新增订单">{reportPreview.newOrders}</Descriptions.Item>
+                      <Descriptions.Item label="确认订单">{reportPreview.confirmedOrders}</Descriptions.Item>
+                      <Descriptions.Item label="新增收入">¥{reportPreview.newRevenue}</Descriptions.Item>
+                      <Descriptions.Item label="退款金额">¥{reportPreview.refundAmount}</Descriptions.Item>
+                    </Descriptions>
+                  )}
+                </div>
+              </div>
+            ),
+          },
+        ]}
       />
 
-      {/* Plan Modal */}
-      <Modal
-        title={editingPlan ? '编辑套餐' : '新建套餐'}
-        open={planModalOpen}
-        onOk={handleSavePlan}
-        onCancel={() => setPlanModalOpen(false)}
-        width={560}
-        centered
-      >
-        <Form
-          form={planForm}
-          layout="vertical"
-          initialValues={{ durationDays: 30, sortOrder: 0, isActive: true, isHot: false }}
-        >
+      <Modal title={editingPlan ? '编辑套餐' : '新建套餐'} open={planModalOpen} onOk={handleSavePlan} onCancel={() => setPlanModalOpen(false)} width={560}>
+        <Form form={planForm} layout="vertical" initialValues={{ durationDays: 30, sortOrder: 0, isActive: true, isHot: false }}>
           <Form.Item name="name" label="套餐名称" rules={[{ required: true }]}>
-            <Input placeholder="例如：Claude Pro" />
+            <Input />
           </Form.Item>
           <Form.Item name="description" label="描述">
-            <Input.TextArea rows={2} placeholder="套餐简要描述" />
+            <Input.TextArea rows={2} />
           </Form.Item>
           <Form.Item name="provider" label="服务商" rules={[{ required: true }]}>
-            <Input placeholder="例如：Anthropic" />
+            <Input />
           </Form.Item>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <Form.Item name="price" label="售价" rules={[{ required: true }]}>
-              <InputNumber style={{ width: '100%' }} prefix="¥" min={0} />
+              <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="originalPrice" label="原价">
-              <InputNumber style={{ width: '100%' }} prefix="¥" min={0} />
+              <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="durationDays" label="有效天数">
-              <InputNumber style={{ width: '100%' }} min={1} />
+              <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
           </div>
-          <Form.Item name="features" label="功能特性（每行一个）">
-            <Input.TextArea
-              rows={4}
-              placeholder="每行一个特性，例如：&#10;Claude Opus 4.6 解锁使用&#10;200K 超长上下文"
-            />
+          <Form.Item name="features" label="功能特性">
+            <Input.TextArea rows={4} placeholder="每行一个特性" />
           </Form.Item>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
             <Form.Item name="sortOrder" label="排序">
-              <InputNumber style={{ width: '100%' }} min={0} />
+              <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
             <Form.Item name="isActive" label="上架" valuePropName="checked">
               <Switch />
             </Form.Item>
-            <Form.Item name="isHot" label="热门推荐" valuePropName="checked">
+            <Form.Item name="isHot" label="热门" valuePropName="checked">
               <Switch />
             </Form.Item>
           </div>
         </Form>
       </Modal>
 
-      {/* Coupon Modal */}
-      <Modal
-        title={editingCoupon ? '编辑优惠码' : '新建优惠码'}
-        open={couponModalOpen}
-        onOk={handleSaveCoupon}
-        onCancel={() => setCouponModalOpen(false)}
-        width={440}
-        centered
-      >
+      <Modal title={editingCoupon ? '编辑优惠码' : '新建优惠码'} open={couponModalOpen} onOk={handleSaveCoupon} onCancel={() => setCouponModalOpen(false)} width={460}>
         <Form form={couponForm} layout="vertical" initialValues={{ maxUses: 1, isActive: true }}>
           <Form.Item name="code" label="优惠码" rules={[{ required: true }]}>
-            <Input placeholder="例如：WELCOMEAI" />
+            <Input />
           </Form.Item>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             <Form.Item name="discountAmount" label="减免金额" rules={[{ required: true }]}>
-              <InputNumber style={{ width: '100%' }} prefix="¥" min={0} />
+              <InputNumber min={0} style={{ width: '100%' }} />
             </Form.Item>
-            <Form.Item name="maxUses" label="最大使用次数">
-              <InputNumber style={{ width: '100%' }} min={1} />
+            <Form.Item name="maxUses" label="最大使用次数" rules={[{ required: true }]}>
+              <InputNumber min={1} style={{ width: '100%' }} />
             </Form.Item>
           </div>
           <Form.Item name="isActive" label="启用" valuePropName="checked">
@@ -1651,44 +1348,8 @@ const AdminPage = () => {
         </Form>
       </Modal>
 
-      {/* Announcement Modal */}
-      <Modal
-        title={editingAnnouncement ? '编辑公告' : '新建公告'}
-        open={announcementModalOpen}
-        onOk={handleSaveAnnouncement}
-        onCancel={() => setAnnouncementModalOpen(false)}
-        width={500}
-        centered
-      >
-        <Form
-          form={announcementForm}
-          layout="vertical"
-          initialValues={{ type: 'info', isActive: true, sortOrder: 0 }}
-        >
-          <Form.Item name="title" label="标题" rules={[{ required: true }]}>
-            <Input placeholder="公告标题" />
-          </Form.Item>
-          <Form.Item name="content" label="内容">
-            <Input.TextArea rows={3} placeholder="公告内容" />
-          </Form.Item>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            <Form.Item name="type" label="类型">
-              <Select
-                options={[
-                  { label: '信息', value: 'info' },
-                  { label: '警告', value: 'warning' },
-                  { label: '成功', value: 'success' },
-                ]}
-              />
-            </Form.Item>
-            <Form.Item name="isActive" label="显示" valuePropName="checked">
-              <Switch />
-            </Form.Item>
-            <Form.Item name="sortOrder" label="排序">
-              <InputNumber style={{ width: '100%' }} min={0} />
-            </Form.Item>
-          </div>
-        </Form>
+      <Modal title="回复工单" open={ticketReplyModalOpen} onOk={handleReplyTicket} onCancel={() => setTicketReplyModalOpen(false)}>
+        <Input.TextArea rows={5} value={ticketReply} onChange={event => setTicketReply(event.target.value)} placeholder="请输入回复内容" />
       </Modal>
     </div>
   );

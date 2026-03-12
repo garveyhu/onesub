@@ -1,11 +1,13 @@
-import { App as AntdApp, ConfigProvider, Spin } from 'antd';
+import { App as AntdApp, ConfigProvider, Spin, theme as antdTheme } from 'antd';
 
 import { Suspense } from 'react';
 import { RouterProvider, createHashRouter } from 'react-router-dom';
 
-import zhCN from 'antd/locale/zh_CN';
-
 import '@/assets/styles/index.less';
+import {
+  AppPreferencesProvider,
+  useAppPreferences,
+} from '@/contexts/app-preferences';
 import { init } from '@/router/init';
 
 const router = createHashRouter(init());
@@ -31,17 +33,20 @@ const LoadingFallback = () => (
           letterSpacing: '0.5px',
         }}
       >
-        加载中...
+        Loading...
       </div>
     </div>
   </div>
 );
 
-const App = () => {
+const AppShell = () => {
+  const { antdLocale, isDark } = useAppPreferences();
+
   return (
     <ConfigProvider
-      locale={zhCN}
+      locale={antdLocale}
       theme={{
+        algorithm: isDark ? antdTheme.darkAlgorithm : antdTheme.defaultAlgorithm,
         token: {
           colorPrimary: '#0ea5e9',
           borderRadius: 8,
@@ -57,5 +62,10 @@ const App = () => {
   );
 };
 
-export default App;
+const App = () => (
+  <AppPreferencesProvider>
+    <AppShell />
+  </AppPreferencesProvider>
+);
 
+export default App;

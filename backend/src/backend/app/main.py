@@ -15,6 +15,7 @@ from backend.complex.constants.auth_whitelist import AuthWhitelist
 from backend.complex.response.code import ResultCode
 from backend.complex.response.exception import CustomException
 from backend.complex.response.result import Result
+from backend.complex.runtime_tasks import start_runtime_tasks, stop_runtime_tasks
 
 # 日志配置
 logger.remove()
@@ -38,8 +39,11 @@ def run_migrations():
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     run_migrations()
+    runtime_tasks = start_runtime_tasks()
+    app.state.runtime_tasks = runtime_tasks
     logger.info("Application started.")
     yield
+    await stop_runtime_tasks(runtime_tasks)
     logger.info("Application shutting down.")
 
 
@@ -139,4 +143,3 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run("backend.app.main:app", host="0.0.0.0", port=8000, reload=True)
-

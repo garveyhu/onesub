@@ -48,17 +48,17 @@ def admin_list_audit_logs(
         "total": total,
         "items": [
             {
-                "id": l.id,
-                "user_id": l.user_id,
-                "username": l.username,
-                "action": l.action,
-                "target_type": l.target_type,
-                "target_id": l.target_id,
-                "detail": l.detail,
-                "ip": l.ip,
-                "created_at": l.created_at.isoformat() if l.created_at else None,
+                "id": item.id,
+                "user_id": item.user_id,
+                "username": item.username,
+                "action": item.action,
+                "target_type": item.target_type,
+                "target_id": item.target_id,
+                "detail": item.detail,
+                "ip": item.ip,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
             }
-            for l in items
+            for item in items
         ],
     })
 
@@ -88,15 +88,15 @@ def admin_list_login_logs(
         "total": total,
         "items": [
             {
-                "id": l.id,
-                "user_id": l.user_id,
-                "username": l.username,
-                "ip": l.ip,
-                "user_agent": l.user_agent,
-                "success": l.success,
-                "fail_reason": l.fail_reason,
-                "created_at": l.created_at.isoformat() if l.created_at else None,
+                "id": item.id,
+                "user_id": item.user_id,
+                "username": item.username,
+                "ip": item.ip,
+                "user_agent": item.user_agent,
+                "success": item.success,
+                "fail_reason": item.fail_reason,
+                "created_at": item.created_at.isoformat() if item.created_at else None,
             }
-            for l in items
+            for item in items
         ],
     })

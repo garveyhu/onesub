@@ -1,5 +1,5 @@
 import { CheckCircleOutlined, TagOutlined } from '@ant-design/icons';
-import { App, Button, Input, Modal, Spin, Tag } from 'antd';
+import { App, Button, Input, Modal, Select, Spin, Tag } from 'antd';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -41,6 +41,7 @@ const PlansPage = () => {
   const [couponCode, setCouponCode] = useState('');
   const [couponInfo, setCouponInfo] = useState<CouponInfo | null>(null);
   const [couponChecking, setCouponChecking] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<'alipay' | 'wechat'>('alipay');
 
   useEffect(() => {
     fetchPlans();
@@ -86,6 +87,7 @@ const PlansPage = () => {
     setSelectedPlan(plan);
     setCouponCode('');
     setCouponInfo(null);
+    setPaymentMethod('alipay');
     setPayModalOpen(true);
   };
 
@@ -93,10 +95,11 @@ const PlansPage = () => {
     if (!selectedPlan) return;
     setOrdering(selectedPlan.id);
     try {
-      const res: any = await post('/order/create', {
-        planId: selectedPlan.id,
-        couponCode: couponInfo ? couponInfo.code : undefined,
-      });
+        const res: any = await post('/order/create', {
+          planId: selectedPlan.id,
+          couponCode: couponInfo ? couponInfo.code : undefined,
+          paymentMethod,
+        });
       if (res.success) {
         message.success(`订单创建成功！订单号: ${res.data.orderNo}`);
         setPayModalOpen(false);
@@ -185,14 +188,27 @@ const PlansPage = () => {
         className="pay-modal"
       >
         {selectedPlan && (
-          <div className="pay-modal-content">
-            <div className="pay-plan-info">
-              <h3>{selectedPlan.name}</h3>
-              <span className="pay-provider">{selectedPlan.provider}</span>
-            </div>
+            <div className="pay-modal-content">
+              <div className="pay-plan-info">
+                <h3>{selectedPlan.name}</h3>
+                <span className="pay-provider">{selectedPlan.provider}</span>
+              </div>
 
-            {/* 优惠码 */}
-            <div className="coupon-section">
+              <div className="coupon-section">
+                <label>支付方式</label>
+                <Select
+                  value={paymentMethod}
+                  style={{ width: '100%' }}
+                  onChange={value => setPaymentMethod(value)}
+                  options={[
+                    { label: '支付宝', value: 'alipay' },
+                    { label: '微信', value: 'wechat' },
+                  ]}
+                />
+              </div>
+
+              {/* 优惠码 */}
+              <div className="coupon-section">
               <label>
                 <TagOutlined /> 优惠码
               </label>
@@ -250,6 +266,10 @@ const PlansPage = () => {
                 <p className="qr-note">转账后联系客服，5 分钟内开通</p>
               </div>
             </div>
+
+            <p className="qr-note" style={{ marginTop: 12 }}>
+              未付款订单默认保留约 2 小时，你也可以在订单详情页提交支付凭证加快确认。
+            </p>
 
             <Button
               type="primary"

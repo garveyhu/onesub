@@ -1,61 +1,116 @@
 import { LockOutlined, MailOutlined, UserOutlined } from '@ant-design/icons';
 import { App, Button, Form, Input, Tabs } from 'antd';
-
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
+import PreferenceSwitcher from '@/components/preferences/PreferenceSwitcher';
 import { AUTH_CONFIG } from '@/constants/app.constants';
-import { post } from '@/services';
+import { useAppPreferences } from '@/contexts/app-preferences';
+import { get, post } from '@/services';
 
 import './index.less';
+
+interface CaptchaData {
+  captchaId: string;
+  imageData: string;
+}
+
+interface RegisterFormValues {
+  username: string;
+  email?: string;
+  password: string;
+  confirmPassword: string;
+  inviteCode?: string;
+  captchaCode?: string;
+}
+
+interface LoginFormValues {
+  username: string;
+  password: string;
+  captchaCode?: string;
+}
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('login');
   const [loading, setLoading] = useState(false);
+  const [captcha, setCaptcha] = useState<CaptchaData | null>(null);
+  const [registerInviteCode, setRegisterInviteCode] = useState('');
   const { message } = App.useApp();
+  const { t } = useAppPreferences();
 
   useEffect(() => {
     const tab = searchParams.get('tab');
+    const inviteCode = searchParams.get('invite') || '';
     if (tab === 'register') {
       setActiveTab('register');
     }
+    if (inviteCode) {
+      setRegisterInviteCode(inviteCode.toUpperCase());
+    }
+    refreshCaptcha();
   }, [searchParams]);
 
-  const onLogin = async (values: { username: string; password: string }) => {
-    setLoading(true);
+  /**
+   * 拉取新的验证码，避免旧验证码被服务端消费后无法继续提交。
+   */
+  const refreshCaptcha = async () => {
     try {
-      const res: any = await post('/auth/login', values);
+      const res: any = await get('/security/captcha');
       if (res.success) {
-        localStorage.setItem(AUTH_CONFIG.USER_TOKEN_KEY, res.data.token);
-        localStorage.setItem('user_info', JSON.stringify(res.data.user));
-        message.success('登录成功！');
-        navigate('/');
-      } else {
-        message.error(res.message || '登录失败');
+        setCaptcha(res.data);
       }
     } catch {
-      message.error('登录失败，请检查用户名和密码');
+      setCaptcha(null);
+    }
+  };
+
+  /**
+   * 统一保存登录态，避免多个页面读写键名不一致。
+   */
+  const saveAuthInfo = (token: string, user: unknown) => {
+    localStorage.setItem(AUTH_CONFIG.USER_TOKEN_KEY, token);
+    localStorage.setItem(AUTH_CONFIG.USER_INFO_KEY, JSON.stringify(user));
+  };
+
+  const onLogin = async (values: LoginFormValues) => {
+    setLoading(true);
+    try {
+      const res: any = await post('/auth/login', {
+        ...values,
+        captchaId: captcha?.captchaId,
+      });
+      if (res.success) {
+        saveAuthInfo(res.data.token, res.data.user);
+        message.success('登录成功');
+        navigate('/');
+      }
+    } catch {
+      refreshCaptcha();
     } finally {
       setLoading(false);
     }
   };
 
-  const onRegister = async (values: { username: string; password: string; email?: string }) => {
+  const onRegister = async (values: RegisterFormValues) => {
     setLoading(true);
     try {
-      const res: any = await post('/auth/register', values);
+      const res: any = await post('/auth/register', {
+        username: values.username,
+        email: values.email,
+        password: values.password,
+        inviteCode: values.inviteCode,
+        captchaCode: values.captchaCode,
+        captchaId: captcha?.captchaId,
+      });
       if (res.success) {
-        localStorage.setItem(AUTH_CONFIG.USER_TOKEN_KEY, res.data.token);
-        localStorage.setItem('user_info', JSON.stringify(res.data.user));
-        message.success('注册成功！');
+        saveAuthInfo(res.data.token, res.data.user);
+        message.success('注册成功');
         navigate('/');
-      } else {
-        message.error(res.message || '注册失败');
       }
     } catch {
-      message.error('注册失败，请稍后再试');
+      refreshCaptcha();
     } finally {
       setLoading(false);
     }
@@ -70,7 +125,7 @@ const LoginPage = () => {
             <span className="logo-icon">O</span>
             <span className="logo-text">OneSub</span>
           </div>
-          <p className="login-subtitle">全球顶级 AI 订阅，一键开通</p>
+          <p className="login-subtitle">{t('loginSubtitle')}</p>
         </div>
 
         <Tabs
@@ -80,7 +135,7 @@ const LoginPage = () => {
           items={[
             {
               key: 'login',
-              label: '登录',
+              label: t('login'),
               children: (
                 <Form layout="vertical" onFinish={onLogin} size="large" autoComplete="off">
                   <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
@@ -89,15 +144,27 @@ const LoginPage = () => {
                   <Form.Item name="password" rules={[{ required: true, message: '请输入密码' }]}>
                     <Input.Password prefix={<LockOutlined />} placeholder="密码" />
                   </Form.Item>
+                  <Form.Item
+                    name="captchaCode"
+                    rules={[{ required: true, message: '请输入验证码' }]}
+                  >
+                    <Input
+                      suffix={
+                        captcha ? (
+                          <img
+                            alt="captcha"
+                            src={captcha.imageData}
+                            style={{ width: 96, cursor: 'pointer' }}
+                            onClick={refreshCaptcha}
+                          />
+                        ) : undefined
+                      }
+                      placeholder="验证码"
+                    />
+                  </Form.Item>
                   <Form.Item>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      block
-                      loading={loading}
-                      className="submit-btn"
-                    >
-                      登录
+                    <Button type="primary" htmlType="submit" block loading={loading} className="submit-btn">
+                      {t('login')}
                     </Button>
                   </Form.Item>
                   <div className="switch-hint">
@@ -109,14 +176,23 @@ const LoginPage = () => {
             },
             {
               key: 'register',
-              label: '注册',
+              label: t('register'),
               children: (
-                <Form layout="vertical" onFinish={onRegister} size="large" autoComplete="off">
+                <Form
+                  layout="vertical"
+                  onFinish={onRegister}
+                  size="large"
+                  autoComplete="off"
+                  initialValues={{ inviteCode: registerInviteCode }}
+                >
                   <Form.Item name="username" rules={[{ required: true, message: '请输入用户名' }]}>
                     <Input prefix={<UserOutlined />} placeholder="用户名" />
                   </Form.Item>
                   <Form.Item name="email">
                     <Input prefix={<MailOutlined />} placeholder="邮箱（选填）" />
+                  </Form.Item>
+                  <Form.Item name="inviteCode">
+                    <Input placeholder="邀请码（选填）" />
                   </Form.Item>
                   <Form.Item
                     name="password"
@@ -143,15 +219,27 @@ const LoginPage = () => {
                   >
                     <Input.Password prefix={<LockOutlined />} placeholder="确认密码" />
                   </Form.Item>
+                  <Form.Item
+                    name="captchaCode"
+                    rules={[{ required: true, message: '请输入验证码' }]}
+                  >
+                    <Input
+                      suffix={
+                        captcha ? (
+                          <img
+                            alt="captcha"
+                            src={captcha.imageData}
+                            style={{ width: 96, cursor: 'pointer' }}
+                            onClick={refreshCaptcha}
+                          />
+                        ) : undefined
+                      }
+                      placeholder="验证码"
+                    />
+                  </Form.Item>
                   <Form.Item>
-                    <Button
-                      type="primary"
-                      htmlType="submit"
-                      block
-                      loading={loading}
-                      className="submit-btn"
-                    >
-                      注册
+                    <Button type="primary" htmlType="submit" block loading={loading} className="submit-btn">
+                      {t('register')}
                     </Button>
                   </Form.Item>
                   <div className="switch-hint">
@@ -164,6 +252,7 @@ const LoginPage = () => {
           ]}
         />
       </div>
+      <PreferenceSwitcher />
     </div>
   );
 };
