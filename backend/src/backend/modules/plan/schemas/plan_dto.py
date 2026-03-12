@@ -36,7 +36,7 @@ class PlanVO(BaseModel):
             "original_price": plan.original_price,
             "features": json.loads(plan.features) if plan.features else [],
             "is_active": plan.is_active,
-            "is_hot": getattr(plan, "is_hot", False),
+            "is_hot": getattr(plan, "is_hot", False) or False,
             "sort_order": plan.sort_order,
             "created_at": plan.created_at,
         }
