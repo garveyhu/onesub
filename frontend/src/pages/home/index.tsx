@@ -1,5 +1,10 @@
-import { RocketOutlined, SafetyOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { Spin } from 'antd';
+import {
+  NotificationOutlined,
+  RocketOutlined,
+  SafetyOutlined,
+  ThunderboltOutlined,
+} from '@ant-design/icons';
+import { Alert, Spin } from 'antd';
 
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -25,6 +30,9 @@ const HomePage = () => {
   const navigate = useNavigate();
   const [hotPlans, setHotPlans] = useState<PlanItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [announcements, setAnnouncements] = useState<
+    { id: number; title: string; content: string; type: string }[]
+  >([]);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -38,11 +46,41 @@ const HomePage = () => {
         setLoading(false);
       }
     };
+    const fetchAnnouncements = async () => {
+      try {
+        const res: any = await get('/announcement');
+        if (res.success) setAnnouncements(res.data || []);
+      } catch {
+        /* ignore */
+      }
+    };
     fetchPlans();
+    fetchAnnouncements();
   }, []);
 
   return (
     <div className="home-page">
+      {/* 公告横幅 */}
+      {announcements.length > 0 && (
+        <div className="announcement-banner">
+          {announcements.map(a => (
+            <Alert
+              key={a.id}
+              message={
+                <span>
+                  <NotificationOutlined style={{ marginRight: 8 }} />
+                  <strong>{a.title}</strong>
+                  {a.content && <span style={{ marginLeft: 8 }}>{a.content}</span>}
+                </span>
+              }
+              type={a.type === 'warning' ? 'warning' : a.type === 'success' ? 'success' : 'info'}
+              showIcon={false}
+              banner
+              closable
+            />
+          ))}
+        </div>
+      )}
       {/* Hero */}
       <section className="hero">
         <div className="hero-bg" />

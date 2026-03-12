@@ -34,6 +34,12 @@ class UserUpdateDTO(BaseModel):
     is_active: Optional[bool] = Field(None, description="是否启用")
 
 
+class AdminResetPasswordDTO(BaseModel):
+    """管理员重置用户密码"""
+
+    new_password: str = Field(description="新密码", min_length=6)
+
+
 class LoginDTO(BaseModel):
     """登录请求"""
 

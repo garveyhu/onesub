@@ -1,6 +1,6 @@
 const getProductionUrl = () => {
-  const path = window.location.pathname;
-  return path.endsWith('/') ? `${path}production` : `${path}/production`;
+  const base = import.meta.env.BASE_URL || '/';
+  return base.endsWith('/') ? `${base}production` : `${base}/production`;
 };
 
 // 环境配置

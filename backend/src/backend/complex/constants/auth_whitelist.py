@@ -5,6 +5,8 @@ class AuthWhitelist:
         "/auth/login",
         "/auth/register",
         "/plan",
+        "/announcement",
+        "/setting",
         "/coupon/check",
         "/health",
         "/ping",

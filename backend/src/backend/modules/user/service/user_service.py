@@ -21,8 +21,15 @@ def _verify_password(plain_password: str, hashed_password: str) -> bool:
 
 class UserService:
     @staticmethod
-    def list(db: Session) -> list[User]:
-        return db.query(User).all()
+    def list(db: Session, username_filter: str = None) -> list[User]:
+        query = db.query(User)
+        if username_filter:
+            query = query.filter(User.username.contains(username_filter))
+        return query.order_by(User.id.asc()).all()
+
+    @staticmethod
+    def hash_password(password: str) -> str:
+        return _hash_password(password)
 
     @staticmethod
     def get_by_id(db: Session, user_id: int) -> User:

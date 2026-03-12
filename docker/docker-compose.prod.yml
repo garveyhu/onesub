@@ -1,8 +1,14 @@
 services:
   onesub:
-    image: 192.168.1.91:9528/complex/onehub:1.0.0
+    image: congcong510/onesub:latest
+    container_name: onesub
+    networks:
+      - nginx_network
     ports:
-      - "5373:80"
+      - 5373:80
     volumes:
-      - ./data:/app/backend/data
+      - /tmp/zfsv3/nvme13/15246330601/data/Onesub/data:/app/backend/data
     restart: always
+networks:
+  nginx_network:
+    external: true
