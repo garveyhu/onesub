@@ -1,4 +1,10 @@
-import { SyncOutlined } from '@ant-design/icons';
+import {
+  ClockCircleOutlined,
+  CreditCardOutlined,
+  RocketOutlined,
+  SyncOutlined,
+  WalletOutlined,
+} from '@ant-design/icons';
 import { App, Button, Empty, Input, Modal, Spin, Table, Tag } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useEffect, useState } from 'react';
@@ -38,6 +44,20 @@ const statusMap: Record<string, { color: string; label: string }> = {
   cancelled: { color: 'default', label: '已取消' },
 };
 
+/**
+ * 统一格式化金额，避免订单概览和表格展示风格不一致。
+ */
+function formatOrderAmount(value: number): string {
+  return `¥${value.toFixed(2)}`;
+}
+
+/**
+ * 统一格式化订单时间，空值时返回占位符。
+ */
+function formatOrderTime(value: string | null): string {
+  return value ? new Date(value).toLocaleString() : '--';
+}
+
 const OrdersPage = () => {
   const navigate = useNavigate();
   const { message, modal } = App.useApp();
@@ -47,6 +67,54 @@ const OrdersPage = () => {
   const [proofModalOpen, setProofModalOpen] = useState(false);
   const [proofText, setProofText] = useState('');
   const [currentOrder, setCurrentOrder] = useState<OrderItem | null>(null);
+  const pendingCount = orders.filter(order => order.status === 'pending').length;
+  const serviceCount = orders.filter(order => ['paid', 'processing', 'completed'].includes(order.status)).length;
+  const totalSpent = orders
+    .filter(order => !['cancelled'].includes(order.status))
+    .reduce((sum, order) => sum + order.actualAmount, 0);
+  const refundedAmount = orders.reduce((sum, order) => {
+    return order.refundStatus === 'refunded' ? sum + order.refundAmount : sum;
+  }, 0);
+  const latestOrderTime = orders.reduce<string | null>((latest, order) => {
+    if (!latest) {
+      return order.createdAt;
+    }
+    return new Date(order.createdAt).getTime() > new Date(latest).getTime() ? order.createdAt : latest;
+  }, null);
+  const overviewCards = [
+    {
+      key: 'total',
+      label: '全部订单',
+      value: `${orders.length}`,
+      detail: orders.length > 0 ? `最近一笔 ${formatOrderTime(latestOrderTime)}` : '还没有购买记录',
+      icon: <CreditCardOutlined />,
+      tone: 'sky',
+    },
+    {
+      key: 'pending',
+      label: '待支付',
+      value: `${pendingCount}`,
+      detail: pendingCount > 0 ? '可继续支付或提交凭证' : '当前没有待支付订单',
+      icon: <ClockCircleOutlined />,
+      tone: 'amber',
+    },
+    {
+      key: 'service',
+      label: '开通进度',
+      value: `${serviceCount}`,
+      detail: serviceCount > 0 ? '已付款、开通中与已完成订单' : '新的订单会在这里同步进度',
+      icon: <RocketOutlined />,
+      tone: 'teal',
+    },
+    {
+      key: 'amount',
+      label: '累计消费',
+      value: formatOrderAmount(totalSpent),
+      detail: refundedAmount > 0 ? `已退款 ${formatOrderAmount(refundedAmount)}` : '退款金额将自动汇总',
+      icon: <WalletOutlined />,
+      tone: 'violet',
+    },
+  ];
 
   useEffect(() => {
     const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
@@ -138,7 +206,7 @@ const OrdersPage = () => {
       title: '订单号',
       dataIndex: 'orderNo',
       key: 'orderNo',
-      render: value => <span style={{ fontFamily: 'monospace' }}>{value}</span>,
+      render: value => <span className="order-no">{value}</span>,
     },
     {
       title: '套餐',
@@ -149,11 +217,11 @@ const OrdersPage = () => {
       title: '金额',
       key: 'amount',
       render: (_, record) => (
-        <div>
-          <div style={{ fontWeight: 700 }}>¥{record.actualAmount}</div>
+        <div className="order-amount-cell">
+          <div className="order-amount-current">{formatOrderAmount(record.actualAmount)}</div>
           {record.discountAmount > 0 && (
-            <div style={{ color: '#16a34a', fontSize: 12 }}>
-              优惠 ¥{record.discountAmount} / {record.couponCode}
+            <div className="order-amount-discount">
+              优惠 {formatOrderAmount(record.discountAmount)} / {record.couponCode}
             </div>
           )}
         </div>
@@ -184,7 +252,7 @@ const OrdersPage = () => {
       title: '创建时间',
       dataIndex: 'createdAt',
       key: 'createdAt',
-      render: value => new Date(value).toLocaleString(),
+      render: value => formatOrderTime(value),
     },
     {
       title: '操作',
@@ -214,40 +282,74 @@ const OrdersPage = () => {
 
   return (
     <div className="orders-page">
-      <div className="orders-header">
-        <div>
-          <h1>{t('orders')}</h1>
-          <p>查看订单详情、支付凭证和开通进度</p>
+      <div className="surface-card orders-hero">
+        <div className="orders-hero-pattern" />
+        <div className="orders-hero-content">
+          <div className="orders-hero-copy">
+            <span className="orders-hero-eyebrow">Order Center</span>
+            <div className="orders-header">
+              <div>
+                <h1>{t('orders')}</h1>
+                <p>查看订单详情、支付凭证、退款状态和开通进度，所有关键动作都集中在这里。</p>
+              </div>
+            </div>
+            <div className="orders-hero-note">
+              {latestOrderTime ? `最近更新：${formatOrderTime(latestOrderTime)}` : '还没有订单记录，先去挑选一个套餐吧'}
+            </div>
+          </div>
+          <div className="orders-hero-actions">
+            <Button icon={<SyncOutlined />} onClick={fetchOrders} loading={loading}>
+              {t('refresh')}
+            </Button>
+            <Button type="primary" onClick={() => navigate('/plans')}>
+              {t('buyNow')}
+            </Button>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 12 }}>
-          <Button icon={<SyncOutlined />} onClick={fetchOrders} loading={loading}>
-            {t('refresh')}
-          </Button>
-          <Button type="primary" onClick={() => navigate('/plans')}>
-            {t('buyNow')}
-          </Button>
+        <div className="orders-overview-grid">
+          {overviewCards.map(card => (
+            <div key={card.key} className={`orders-overview-card tone-${card.tone}`}>
+              <div className="orders-overview-icon">{card.icon}</div>
+              <span className="orders-overview-label">{card.label}</span>
+              <strong className="orders-overview-value">{card.value}</strong>
+              <span className="orders-overview-detail">{card.detail}</span>
+            </div>
+          ))}
         </div>
       </div>
 
-      {loading ? (
-        <div className="orders-loading">
-          <Spin size="large" />
+      <div className="surface-card orders-table-shell">
+        <div className="orders-table-toolbar">
+          <div>
+            <strong>订单总览</strong>
+            <p>共 {orders.length} 笔订单，可直接查看支付、凭证和开通进度。</p>
+          </div>
         </div>
-      ) : orders.length > 0 ? (
-        <Table
-          columns={columns}
-          dataSource={orders}
-          rowKey="id"
-          pagination={{ pageSize: 10 }}
-          className="orders-table"
-        />
-      ) : (
-        <Empty description="暂无订单" className="orders-empty">
-          <Button type="primary" onClick={() => navigate('/plans')}>
-            {t('buyNow')}
-          </Button>
-        </Empty>
-      )}
+        <div className="orders-toolbar-meta">
+          <span className="orders-toolbar-chip">待支付 {pendingCount}</span>
+          <span className="orders-toolbar-chip">已退款 {formatOrderAmount(refundedAmount)}</span>
+        </div>
+        {loading ? (
+          <div className="orders-loading">
+            <Spin size="large" />
+          </div>
+        ) : orders.length > 0 ? (
+          <Table
+            columns={columns}
+            dataSource={orders}
+            rowKey="id"
+            pagination={{ pageSize: 10 }}
+            className="orders-table"
+            scroll={{ x: 920 }}
+          />
+        ) : (
+          <Empty description="暂无订单" className="orders-empty">
+            <Button type="primary" onClick={() => navigate('/plans')}>
+              {t('buyNow')}
+            </Button>
+          </Empty>
+        )}
+      </div>
 
       <Modal
         title="提交支付凭证"

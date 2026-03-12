@@ -223,22 +223,46 @@ const ProfilePage = () => {
   }
 
   const { user } = summary;
+  const joinedDateLabel = new Date(user.createdAt).toLocaleDateString();
+  const subscriptionLabel = user.subscriptionExpiresAt
+    ? `订阅至 ${new Date(user.subscriptionExpiresAt).toLocaleDateString()}`
+    : '暂无有效订阅';
+  const subscriptionDetailLabel = user.subscriptionExpiresAt
+    ? new Date(user.subscriptionExpiresAt).toLocaleString()
+    : '暂无有效订阅';
 
   return (
     <div className="profile-page">
       <div className="profile-banner">
         <div className="banner-pattern" />
         <div className="banner-content">
-          <Avatar size={88} icon={<UserOutlined />} className="profile-avatar" />
-          <div className="banner-text">
-            <h1>{user.username}</h1>
-            <div className="profile-badges">
-              {user.isAdmin && <span className="badge admin-badge">Admin</span>}
-              <span className="badge member-badge">
-                {user.subscriptionExpiresAt
-                  ? `订阅至 ${new Date(user.subscriptionExpiresAt).toLocaleDateString()}`
-                  : '暂无有效订阅'}
-              </span>
+          <div className="banner-main">
+            <Avatar size={88} icon={<UserOutlined />} className="profile-avatar" />
+            <div className="banner-text">
+              <h1>{user.username}</h1>
+              <p className="banner-subline">
+                <span>{user.email || '暂未设置邮箱'}</span>
+                <span>邀请码 {user.inviteCode}</span>
+                <span>注册于 {joinedDateLabel}</span>
+              </p>
+              <div className="profile-badges">
+                {user.isAdmin && <span className="badge admin-badge">Admin</span>}
+                <span className="badge member-badge">{subscriptionLabel}</span>
+              </div>
+            </div>
+          </div>
+          <div className="banner-glance">
+            <div className="banner-glance-item">
+              <span>累计订单</span>
+              <strong>{summary.orderCount}</strong>
+            </div>
+            <div className="banner-glance-item">
+              <span>待处理工单</span>
+              <strong>{summary.openTicketCount}</strong>
+            </div>
+            <div className="banner-glance-item">
+              <span>返利余额</span>
+              <strong>¥{user.rewardBalance.toFixed(2)}</strong>
             </div>
           </div>
         </div>
@@ -256,11 +280,7 @@ const ProfilePage = () => {
           <div className="info-icon">⏰</div>
           <div className="info-detail">
             <span className="info-label">订阅到期</span>
-            <span className="info-value">
-              {user.subscriptionExpiresAt
-                ? new Date(user.subscriptionExpiresAt).toLocaleString()
-                : '暂无有效订阅'}
-            </span>
+            <span className="info-value">{subscriptionDetailLabel}</span>
           </div>
         </div>
         <div className="info-card">

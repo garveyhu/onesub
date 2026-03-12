@@ -2,6 +2,9 @@ import type { ComponentType, LazyExoticComponent } from 'react';
 
 export interface RouteMeta {
   title?: string;
+  description?: string;
+  canonicalPath?: string;
+  noindex?: boolean;
   auth?: boolean;
   roles?: string[];
   forbidRepeatLogin?: boolean;

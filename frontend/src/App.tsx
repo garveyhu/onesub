@@ -1,7 +1,7 @@
 import { App as AntdApp, ConfigProvider, Spin, theme as antdTheme } from 'antd';
 
 import { Suspense } from 'react';
-import { RouterProvider, createHashRouter } from 'react-router-dom';
+import { RouterProvider, createBrowserRouter } from 'react-router-dom';
 
 import '@/assets/styles/index.less';
 import {
@@ -10,7 +10,7 @@ import {
 } from '@/contexts/app-preferences';
 import { init } from '@/router/init';
 
-const router = createHashRouter(init());
+const router = createBrowserRouter(init());
 
 const LoadingFallback = () => (
   <div

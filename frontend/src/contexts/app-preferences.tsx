@@ -140,6 +140,7 @@ export const AppPreferencesProvider = ({
 
   useEffect(() => {
     localStorage.setItem(LANGUAGE_KEY, language);
+    document.documentElement.lang = language;
   }, [language]);
 
   useEffect(() => {

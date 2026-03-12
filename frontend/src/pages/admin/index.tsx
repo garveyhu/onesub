@@ -201,6 +201,17 @@ const ticketStatusMap: Record<string, { color: string; label: string }> = {
   closed: { color: 'default', label: '已关闭' },
 };
 
+const adminTabLabels: Record<string, string> = {
+  dashboard: '仪表盘',
+  orders: '订单',
+  users: '用户',
+  tickets: '工单',
+  plans: '套餐',
+  coupons: '优惠码',
+  settings: '站点设置',
+  ops: '系统运维',
+};
+
 const AdminPage = () => {
   const navigate = useNavigate();
   const { message, modal } = App.useApp();
@@ -252,6 +263,40 @@ const AdminPage = () => {
   const totalCouponUses = couponStats.reduce((sum, item) => sum + item.usedCount, 0);
   const totalCouponRevenue = couponStats.reduce((sum, item) => sum + item.revenue, 0);
   const topCoupon = couponStats[0] || null;
+  const adminHighlights = [
+    {
+      key: 'users',
+      label: '总用户',
+      value: overview ? String(overview.totalUsers) : '--',
+      detail: overview ? `今日 +${overview.todayUsers}` : '等待数据同步',
+      icon: <TeamOutlined />,
+      tone: 'blue',
+    },
+    {
+      key: 'orders',
+      label: '订单量',
+      value: overview ? String(overview.totalOrders) : '--',
+      detail: overview ? `${overview.pendingOrders} 笔待支付` : '等待数据同步',
+      icon: <FileTextOutlined />,
+      tone: 'green',
+    },
+    {
+      key: 'revenue',
+      label: '总收入',
+      value: overview ? formatCurrency(overview.totalRevenue) : '--',
+      detail: overview ? `今日 ${formatCurrency(overview.todayRevenue)}` : '等待数据同步',
+      icon: '¥',
+      tone: 'violet',
+    },
+    {
+      key: 'tickets',
+      label: '待处理工单',
+      value: overview ? String(overview.openTickets) : '--',
+      detail: overview ? `${overview.activeSubscriptions} 个活跃订阅` : '等待数据同步',
+      icon: <MessageOutlined />,
+      tone: 'amber',
+    },
+  ];
 
   useEffect(() => {
     const token = localStorage.getItem(AUTH_CONFIG.USER_TOKEN_KEY);
@@ -876,10 +921,25 @@ const AdminPage = () => {
 
   return (
     <div className="admin-page">
-      <div className="admin-header">
-        <div>
-          <h1>{t('admin')}</h1>
-          <p>支付、订单、工单、运营数据与安全运维统一面板</p>
+      <div className="surface-card admin-header">
+        <div className="admin-header-pattern" />
+        <div className="admin-header-content">
+          <div className="admin-header-copy">
+            <span className="admin-header-eyebrow">Operations Hub</span>
+            <h1>{t('admin')}</h1>
+            <p>支付、订单、工单、运营数据与安全运维统一面板，日常运营动作都可以在这里集中完成。</p>
+            <div className="admin-header-note">当前活跃页签：{adminTabLabels[activeTab]}</div>
+          </div>
+          <div className="admin-header-glance">
+            {adminHighlights.map(item => (
+              <div key={item.key} className={`admin-glance-card tone-${item.tone}`}>
+                <div className="admin-glance-icon">{item.icon}</div>
+                <span className="admin-glance-label">{item.label}</span>
+                <strong className="admin-glance-value">{item.value}</strong>
+                <span className="admin-glance-detail">{item.detail}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -900,7 +960,7 @@ const AdminPage = () => {
                 <Spin size="large" />
               </div>
             ) : (
-              <div>
+              <div className="admin-section-stack">
                 {overview && (
                   <div className="stats-grid">
                     <div className="stat-card">
@@ -1054,30 +1114,48 @@ const AdminPage = () => {
               </span>
             ),
             children: (
-              <div>
-                <div className="admin-filter-bar">
-                  <Input placeholder="订单号" value={orderNoFilter} onChange={event => setOrderNoFilter(event.target.value)} />
-                  <Input placeholder="用户名" value={orderUsernameFilter} onChange={event => setOrderUsernameFilter(event.target.value)} />
-                  <Select
-                    allowClear
-                    placeholder="订单状态"
-                    value={orderStatusFilter}
-                    style={{ width: 160 }}
-                    onChange={value => setOrderStatusFilter(value)}
-                    options={Object.entries(orderStatusMap).map(([value, item]) => ({
-                      label: item.label,
-                      value,
-                    }))}
-                  />
-                  <Button type="primary" icon={<SearchOutlined />} onClick={() => void fetchOrders()}>
-                    搜索
-                  </Button>
-                  <Button icon={<SyncOutlined />} onClick={() => void fetchOrders()}>
-                    {t('refresh')}
-                  </Button>
-                  <Button onClick={handleExportOrders}>导出 CSV</Button>
+              <div className="admin-section-stack">
+                <div className="surface-card admin-toolbar-shell">
+                  <div className="admin-filter-bar">
+                    <Input placeholder="订单号" value={orderNoFilter} onChange={event => setOrderNoFilter(event.target.value)} />
+                    <Input placeholder="用户名" value={orderUsernameFilter} onChange={event => setOrderUsernameFilter(event.target.value)} />
+                    <Select
+                      allowClear
+                      placeholder="订单状态"
+                      value={orderStatusFilter}
+                      style={{ width: 160 }}
+                      onChange={value => setOrderStatusFilter(value)}
+                      options={Object.entries(orderStatusMap).map(([value, item]) => ({
+                        label: item.label,
+                        value,
+                      }))}
+                    />
+                    <Button type="primary" icon={<SearchOutlined />} onClick={() => void fetchOrders()}>
+                      搜索
+                    </Button>
+                    <Button icon={<SyncOutlined />} onClick={() => void fetchOrders()}>
+                      {t('refresh')}
+                    </Button>
+                    <Button onClick={handleExportOrders}>导出 CSV</Button>
+                  </div>
                 </div>
-                <Table rowKey="id" loading={ordersLoading} columns={orderColumns} dataSource={orders} className="admin-table" scroll={{ x: 1200 }} />
+                <div className="surface-card admin-table-shell">
+                  <div className="admin-table-caption">
+                    <div>
+                      <strong>订单处理中心</strong>
+                      <span>支持确认收款、更新进度、导出报表和退款处理。</span>
+                    </div>
+                    <span className="admin-caption-tag">共 {orders.length} 笔</span>
+                  </div>
+                  <Table
+                    rowKey="id"
+                    loading={ordersLoading}
+                    columns={orderColumns}
+                    dataSource={orders}
+                    className="admin-table"
+                    scroll={{ x: 1200 }}
+                  />
+                </div>
               </div>
             ),
           },
@@ -1089,17 +1167,35 @@ const AdminPage = () => {
               </span>
             ),
             children: (
-              <div>
-                <div className="admin-filter-bar">
-                  <Input placeholder="搜索用户名" value={userKeyword} onChange={event => setUserKeyword(event.target.value)} />
-                  <Button type="primary" icon={<SearchOutlined />} onClick={() => void fetchUsers()}>
-                    搜索
-                  </Button>
-                  <Button icon={<SyncOutlined />} onClick={() => void fetchUsers()}>
-                    {t('refresh')}
-                  </Button>
+              <div className="admin-section-stack">
+                <div className="surface-card admin-toolbar-shell">
+                  <div className="admin-filter-bar">
+                    <Input placeholder="搜索用户名" value={userKeyword} onChange={event => setUserKeyword(event.target.value)} />
+                    <Button type="primary" icon={<SearchOutlined />} onClick={() => void fetchUsers()}>
+                      搜索
+                    </Button>
+                    <Button icon={<SyncOutlined />} onClick={() => void fetchUsers()}>
+                      {t('refresh')}
+                    </Button>
+                  </div>
                 </div>
-                <Table rowKey="id" loading={usersLoading} columns={userColumns} dataSource={users} className="admin-table" scroll={{ x: 1200 }} />
+                <div className="surface-card admin-table-shell">
+                  <div className="admin-table-caption">
+                    <div>
+                      <strong>用户与权限</strong>
+                      <span>集中管理用户状态、管理员权限、返利余额与密码重置。</span>
+                    </div>
+                    <span className="admin-caption-tag">共 {users.length} 位</span>
+                  </div>
+                  <Table
+                    rowKey="id"
+                    loading={usersLoading}
+                    columns={userColumns}
+                    dataSource={users}
+                    className="admin-table"
+                    scroll={{ x: 1200 }}
+                  />
+                </div>
               </div>
             ),
           },
@@ -1110,7 +1206,25 @@ const AdminPage = () => {
                 <MessageOutlined /> 工单
               </span>
             ),
-            children: <Table rowKey="id" loading={ticketsLoading} columns={ticketColumns} dataSource={tickets} className="admin-table" scroll={{ x: 1000 }} />,
+            children: (
+              <div className="surface-card admin-table-shell">
+                <div className="admin-table-caption">
+                  <div>
+                    <strong>工单回复中心</strong>
+                    <span>统一查看用户问题、跟进状态并直接完成回复。</span>
+                  </div>
+                  <span className="admin-caption-tag">待处理 {tickets.filter(item => item.status === 'open').length}</span>
+                </div>
+                <Table
+                  rowKey="id"
+                  loading={ticketsLoading}
+                  columns={ticketColumns}
+                  dataSource={tickets}
+                  className="admin-table"
+                  scroll={{ x: 1000 }}
+                />
+              </div>
+            ),
           },
           {
             key: 'plans',
@@ -1120,26 +1234,37 @@ const AdminPage = () => {
               </span>
             ),
             children: (
-              <div>
-                <div className="admin-filter-bar">
-                  <Button type="primary" icon={<PlusOutlined />} onClick={() => openPlanModal()}>
-                    新建套餐
-                  </Button>
-                  <Upload
-                    accept=".json"
-                    showUploadList={false}
-                    beforeUpload={file => {
-                      void handleImportPlans(file);
-                      return false;
-                    }}
-                  >
-                    <Button icon={<ImportOutlined />}>导入 JSON</Button>
-                  </Upload>
-                  <Button icon={<SyncOutlined />} onClick={() => void fetchPlans()}>
-                    {t('refresh')}
-                  </Button>
+              <div className="admin-section-stack">
+                <div className="surface-card admin-toolbar-shell">
+                  <div className="admin-filter-bar">
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => openPlanModal()}>
+                      新建套餐
+                    </Button>
+                    <Upload
+                      accept=".json"
+                      showUploadList={false}
+                      beforeUpload={file => {
+                        void handleImportPlans(file);
+                        return false;
+                      }}
+                    >
+                      <Button icon={<ImportOutlined />}>导入 JSON</Button>
+                    </Upload>
+                    <Button icon={<SyncOutlined />} onClick={() => void fetchPlans()}>
+                      {t('refresh')}
+                    </Button>
+                  </div>
                 </div>
-                <Table rowKey="id" loading={plansLoading} columns={planColumns} dataSource={plans} className="admin-table" />
+                <div className="surface-card admin-table-shell">
+                  <div className="admin-table-caption">
+                    <div>
+                      <strong>套餐配置</strong>
+                      <span>维护套餐价格、时长、特性与上下架状态。</span>
+                    </div>
+                    <span className="admin-caption-tag">共 {plans.length} 个</span>
+                  </div>
+                  <Table rowKey="id" loading={plansLoading} columns={planColumns} dataSource={plans} className="admin-table" />
+                </div>
               </div>
             ),
           },
@@ -1151,26 +1276,37 @@ const AdminPage = () => {
               </span>
             ),
             children: (
-              <div>
-                <div className="admin-filter-bar">
-                  <Button type="primary" icon={<PlusOutlined />} onClick={() => openCouponModal()}>
-                    新建优惠码
-                  </Button>
-                  <Upload
-                    accept=".json"
-                    showUploadList={false}
-                    beforeUpload={file => {
-                      void handleImportCoupons(file);
-                      return false;
-                    }}
-                  >
-                    <Button icon={<ImportOutlined />}>导入 JSON</Button>
-                  </Upload>
-                  <Button icon={<SyncOutlined />} onClick={() => void fetchCoupons()}>
-                    {t('refresh')}
-                  </Button>
+              <div className="admin-section-stack">
+                <div className="surface-card admin-toolbar-shell">
+                  <div className="admin-filter-bar">
+                    <Button type="primary" icon={<PlusOutlined />} onClick={() => openCouponModal()}>
+                      新建优惠码
+                    </Button>
+                    <Upload
+                      accept=".json"
+                      showUploadList={false}
+                      beforeUpload={file => {
+                        void handleImportCoupons(file);
+                        return false;
+                      }}
+                    >
+                      <Button icon={<ImportOutlined />}>导入 JSON</Button>
+                    </Upload>
+                    <Button icon={<SyncOutlined />} onClick={() => void fetchCoupons()}>
+                      {t('refresh')}
+                    </Button>
+                  </div>
                 </div>
-                <Table rowKey="id" loading={couponsLoading} columns={couponColumns} dataSource={coupons} className="admin-table" />
+                <div className="surface-card admin-table-shell">
+                  <div className="admin-table-caption">
+                    <div>
+                      <strong>优惠码仓库</strong>
+                      <span>统一管理减免金额、使用上限和启停状态。</span>
+                    </div>
+                    <span className="admin-caption-tag">共 {coupons.length} 个</span>
+                  </div>
+                  <Table rowKey="id" loading={couponsLoading} columns={couponColumns} dataSource={coupons} className="admin-table" />
+                </div>
               </div>
             ),
           },
@@ -1186,25 +1322,36 @@ const AdminPage = () => {
                 <Spin size="large" />
               </div>
             ) : (
-              <div className="settings-list">
-                {settings.map(item => (
-                  <div key={item.key} className="setting-item">
-                    <div className="setting-label">
-                      <strong>{item.description}</strong>
-                      <span className="setting-key">{item.key}</span>
-                    </div>
-                    <Input
-                      value={settingsEditing[item.key]}
-                      onChange={event =>
-                        setSettingsEditing(prev => ({ ...prev, [item.key]: event.target.value }))
-                      }
-                      style={{ width: 360 }}
-                    />
+              <div className="surface-card settings-shell">
+                <div className="admin-table-caption">
+                  <div>
+                    <strong>站点设置</strong>
+                    <span>集中维护公开地址、邮件配置、支付说明等全局参数。</span>
                   </div>
-                ))}
-                <Button type="primary" onClick={handleSaveSettings}>
-                  {t('save')}
-                </Button>
+                  <span className="admin-caption-tag">共 {settings.length} 项</span>
+                </div>
+                <div className="settings-list">
+                  {settings.map(item => (
+                    <div key={item.key} className="setting-item">
+                      <div className="setting-label">
+                        <strong>{item.description}</strong>
+                        <span className="setting-key">{item.key}</span>
+                      </div>
+                      <Input
+                        className="settings-input"
+                        value={settingsEditing[item.key]}
+                        onChange={event =>
+                          setSettingsEditing(prev => ({ ...prev, [item.key]: event.target.value }))
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="settings-actions">
+                  <Button type="primary" onClick={handleSaveSettings}>
+                    {t('save')}
+                  </Button>
+                </div>
               </div>
             ),
           },
@@ -1220,9 +1367,9 @@ const AdminPage = () => {
                 <Spin size="large" />
               </div>
             ) : (
-              <div className="dashboard-section-grid">
+              <div className="dashboard-section-grid admin-ops-grid">
                 <div className="surface-card dashboard-panel">
-                  <div className="profile-panel-header">
+                  <div className="admin-panel-header">
                     <div>
                       <h3>健康检查</h3>
                       <p>CPU、内存、磁盘、运行时长与数据库状态</p>
@@ -1244,7 +1391,7 @@ const AdminPage = () => {
                 </div>
 
                 <div className="surface-card dashboard-panel">
-                  <div className="profile-panel-header">
+                  <div className="admin-panel-header">
                     <div>
                       <h3>数据备份</h3>
                       <p>支持 SQLite 自动备份到本地/NAS 挂载目录</p>
@@ -1264,7 +1411,7 @@ const AdminPage = () => {
                 </div>
 
                 <div className="surface-card dashboard-panel full-width">
-                  <div className="profile-panel-header">
+                  <div className="admin-panel-header">
                     <div>
                       <h3>定时报表</h3>
                       <p>支持每日/每周邮件发送，也可手动预览与发送</p>

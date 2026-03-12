@@ -4,8 +4,12 @@ from sqlalchemy.orm import Session
 
 from backend.models.site_setting import SiteSetting
 
-PUBLIC_SITE_URL = "https://sub.kerwin.cloud/#"
-LEGACY_PUBLIC_BASE_URLS = {"http://localhost:5173", "http://localhost:5173/#"}
+PUBLIC_SITE_URL = "https://sub.kerwin.cloud"
+LEGACY_PUBLIC_BASE_URLS = {
+    "http://localhost:5173",
+    "http://localhost:5173/#",
+    "https://sub.kerwin.cloud/#",
+}
 
 DEFAULT_SITE_SETTINGS: dict[str, dict[str, str]] = {
     "site_name": {"value": "OneSub", "description": "站点名称"},
